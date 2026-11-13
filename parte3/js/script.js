@@ -20,17 +20,12 @@ const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({
     "'": '&#39;'
 }[c]));
 
-const initials = n => String(n || '?')
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map(x => x[0])
-    .join('')
-    .toUpperCase();
+const initials = n => String(n || '?').trim().split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase();
 
 async function api(path, opts = {}) {
     const r = await fetch(API + path, {
         ...opts,
+        cache: 'no-store',
         headers: {
             'Content-Type': 'application/json',
             ...(opts.headers || {})
@@ -39,29 +34,22 @@ async function api(path, opts = {}) {
 
     const d = await r.json().catch(() => ({}));
 
-    if (!r.ok) {
-        throw Error(d.erro || `Erro ${r.status}`);
-    }
+    if (!r.ok) throw Error(d.erro || `Erro ${r.status}`);
 
     return d;
 }
 
 function toast(msg, error = false) {
     const t = $('#toast');
-
     t.textContent = msg;
     t.className = 'toast show' + (error ? ' error' : '');
 
     clearTimeout(toast.timer);
-
-    toast.timer = setTimeout(() => {
-        t.className = 'toast';
-    }, 3200);
+    toast.timer = setTimeout(() => t.className = 'toast', 3200);
 }
 
 function feedback(id, msg, error = false) {
     const e = $('#' + id);
-
     e.textContent = msg;
     e.classList.toggle('error', error);
 }
@@ -71,69 +59,48 @@ function values(form) {
 }
 
 function status(s) {
-    const k = ['pendente', 'agendada', 'cancelada', 'concluida'].includes(s)
-        ? s
-        : 'pendente';
-
+    const k = ['pendente', 'agendada', 'cancelada', 'concluida'].includes(s) ? s : 'pendente';
     return `<span class="status ${k}">${k[0].toUpperCase() + k.slice(1)}</span>`;
 }
 
 function dateBR(d) {
-    return d
-        ? new Date(String(d).slice(0, 10) + 'T00:00:00').toLocaleDateString('pt-BR')
-        : 'A definir';
+    return d ? new Date(String(d).slice(0, 10) + 'T00:00:00').toLocaleDateString('pt-BR') : 'A definir';
 }
 
-function go(id) {
-    $$('.page').forEach(p => {
-        p.classList.toggle('show', p.id === id);
-    });
-
-    $$('.nav').forEach(b => {
-        b.classList.toggle('active', b.dataset.page === id);
-    });
-
-    $('#crumb').textContent = $(`.nav[data-page="${id}"]`)?.textContent.trim() || id;
-
-    $('#sidebar').classList.remove('open');
-
-    if (id === 'medicos') loadDoctors();
-
-    if (id === 'pacientes') loadPatients();
-
-    if (id === 'consultas') {
-        loadDoctors();
-        loadPatients();
-        loadAppointments();
-    }
-
-    if (id === 'pendentes') loadPending();
-
-    if (id === 'especialidades') loadSpecialties();
+function renderSummary() {
+    $('#summary').innerHTML = S.specialties.map(s => `
+        <div class="row">
+            <div class="row-info">
+                <b>${esc(s.nome)}</b>
+            </div>
+            <span class="pill">
+                ${S.doctors.filter(d => Number(d.id_especialidades) === Number(s.id_especialidades)).length} médicos
+            </span>
+        </div>
+    `).join('') || '<div class="empty">Nenhuma especialidade cadastrada.</div>';
 }
 
-$$('[data-page]').forEach(b => {
-    b.onclick = () => go(b.dataset.page);
-});
-
-$$('[data-go]').forEach(b => {
-    b.onclick = () => go(b.dataset.go);
-});
-
-$('#menu').onclick = () => {
-    $('#sidebar').classList.toggle('open');
-};
-
-// Especialidades
+function renderRecent() {
+    $('#recent').innerHTML = S.pending.slice(0, 5).map(c => `
+        <div class="row">
+            <div class="initial">${esc(initials(c.paciente))}</div>
+            <div class="row-info">
+                <b>${esc(c.paciente)}</b>
+                <small>${esc(c.especialidade)} · ${esc(c.profissional)}</small>
+            </div>
+            ${status(c.status)}
+        </div>
+    `).join('') || '<div class="empty">Nenhum pedido pendente.</div>';
+}
 
 async function loadSpecialties() {
     S.specialties = await api('/especialidades');
 
     $('#specialtySelect').innerHTML =
         '<option value="">Selecione</option>' +
-        S.specialties.map(s =>
-            `<option value="${s.id_especialidades}">${esc(s.nome)}</option>`
-        ).join('');
+        S.specialties.map(s => `
+            <option value="${s.id_especialidades}">${esc(s.nome)}</option>
+        `).join('');
 
     $('#specialties').innerHTML = S.specialties.map((s, i) => `
         <article class="specialty-card">
@@ -143,44 +110,26 @@ async function loadSpecialties() {
         </article>
     `).join('') || '<div class="panel empty">Sem especialidades cadastradas.</div>';
 
-    $('#summary').innerHTML = S.specialties.map(s => `
-        <div class="row">
-            <div class="row-info">
-                <b>${esc(s.nome)}</b>
-            </div>
-            <span class="pill">
-                ${S.doctors.filter(d =>
-                    Number(d.id_especialidades) === Number(s.id_especialidades)
-                ).length} médicos
-            </span>
-        </div>
-    `).join('');
+    renderSummary();
 }
-
-// Médicos
 
 async function loadDoctors() {
     S.doctors = await api('/profissionais');
 
+    $('#nMed').textContent = S.doctors.length;
     $('#doctorCount').textContent = S.doctors.length;
 
     $('#doctors').innerHTML = S.doctors.map(d => `
         <div class="doctor">
             <div class="initial">${esc(initials(d.nome))}</div>
-
             <div>
                 <b>${esc(d.nome)}</b>
-
                 <small>
                     CRM ${esc(d.crm)} · ${esc(d.email)}<br>
                     ${esc(d.telefone)}
                 </small>
-
                 <span class="tag">${esc(d.especialidade)}</span>
-
-                ${d.minicurriculo
-                    ? `<small>${esc(d.minicurriculo)}</small>`
-                    : ''}
+                ${d.minicurriculo ? `<small>${esc(d.minicurriculo)}</small>` : ''}
             </div>
         </div>
     `).join('') || '<div class="empty">Nenhum médico cadastrado.</div>';
@@ -192,49 +141,43 @@ async function loadDoctors() {
                 ${esc(d.nome)} · ${esc(d.especialidade)}
             </option>
         `).join('');
-}
 
-// Pacientes
+    renderSummary();
+}
 
 async function loadPatients() {
     S.patients = await api('/pacientes');
 
+    $('#nPac').textContent = S.patients.length;
     $('#patientCount').textContent = S.patients.length;
 
-    $('#patients').innerHTML = S.patients.length
-        ? `
-            <table>
-                <thead>
+    $('#patients').innerHTML = S.patients.length ? `
+        <table>
+            <thead>
+                <tr>
+                    <th>NOME</th>
+                    <th>CPF</th>
+                    <th>TELEFONE</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${S.patients.map(p => `
                     <tr>
-                        <th>NOME</th>
-                        <th>CPF</th>
-                        <th>TELEFONE</th>
+                        <td>${esc(p.nome)}</td>
+                        <td>${esc(p.cpf)}</td>
+                        <td>${esc(p.telefone)}</td>
                     </tr>
-                </thead>
-
-                <tbody>
-                    ${S.patients.map(p => `
-                        <tr>
-                            <td>${esc(p.nome)}</td>
-                            <td>${esc(p.cpf)}</td>
-                            <td>${esc(p.telefone)}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `
-        : '<div class="empty">Nenhum paciente cadastrado.</div>';
+                `).join('')}
+            </tbody>
+        </table>
+    ` : '<div class="empty">Nenhum paciente cadastrado.</div>';
 
     $('#patientSelect').innerHTML =
         '<option value="">Selecione o paciente</option>' +
         S.patients.map(p => `
-            <option value="${p.id_paciente}">
-                ${esc(p.nome)}
-            </option>
+            <option value="${p.id_paciente}">${esc(p.nome)}</option>
         `).join('');
 }
-
-// Pedidos pendentes
 
 async function loadPending() {
     S.pending = await api('/consultas/pendentes');
@@ -256,7 +199,6 @@ async function loadPending() {
                     <small>MÉDICO</small>
                     <b>${esc(c.profissional)}</b>
                 </div>
-
                 <div>
                     <small>TELEFONE</small>
                     <b>${esc(c.telefone)}</b>
@@ -268,12 +210,7 @@ async function loadPending() {
             <form class="schedule" data-id="${c.id_consulta}">
                 <label>
                     Data
-                    <input
-                        name="data_consulta"
-                        type="date"
-                        min="${new Date().toISOString().slice(0, 10)}"
-                        required
-                    >
+                    <input name="data_consulta" type="date" min="${new Date().toISOString().slice(0, 10)}" required>
                 </label>
 
                 <label>
@@ -285,89 +222,102 @@ async function loadPending() {
             </form>
         </article>
     `).join('') || '<div class="panel empty">Não há pedidos pendentes no momento.</div>';
-}
 
-// Consultas
+    renderRecent();
+}
 
 async function loadAppointments() {
     S.appointments = await api('/consultas');
 
-    $('#nAge').textContent = S.appointments.filter(
-        c => c.status === 'agendada'
-    ).length;
+    $('#nAge').textContent = S.appointments.filter(c => c.status === 'agendada').length;
 
-    $('#appointments').innerHTML = S.appointments.length
-        ? `
-            <table>
-                <thead>
+    $('#appointments').innerHTML = S.appointments.length ? `
+        <table>
+            <thead>
+                <tr>
+                    <th>PACIENTE</th>
+                    <th>MÉDICO</th>
+                    <th>ESPECIALIDADE</th>
+                    <th>DATA</th>
+                    <th>STATUS</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${S.appointments.map(c => `
                     <tr>
-                        <th>PACIENTE</th>
-                        <th>MÉDICO</th>
-                        <th>ESPECIALIDADE</th>
-                        <th>DATA</th>
-                        <th>STATUS</th>
+                        <td>${esc(c.paciente)}</td>
+                        <td>${esc(c.profissional)}</td>
+                        <td>${esc(c.especialidade)}</td>
+                        <td>${dateBR(c.data_consulta)}</td>
+                        <td>${status(c.status)}</td>
                     </tr>
-                </thead>
-
-                <tbody>
-                    ${S.appointments.map(c => `
-                        <tr>
-                            <td>${esc(c.paciente)}</td>
-                            <td>${esc(c.profissional)}</td>
-                            <td>${esc(c.especialidade)}</td>
-                            <td>${dateBR(c.data_consulta)}</td>
-                            <td>${status(c.status)}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `
-        : '<div class="empty">Nenhuma consulta registrada.</div>';
+                `).join('')}
+            </tbody>
+        </table>
+    ` : '<div class="empty">Nenhuma consulta registrada.</div>';
 }
-
-// Painel inicial
 
 async function dashboard() {
-    const [d, p, pend, a] = await Promise.all([
-        api('/profissionais'),
-        api('/pacientes'),
-        api('/consultas/pendentes'),
-        api('/consultas')
+    const resultados = await Promise.allSettled([
+        loadDoctors(),
+        loadPatients(),
+        loadPending(),
+        loadAppointments()
     ]);
 
-    S.doctors = d;
-    S.patients = p;
-    S.pending = pend;
-    S.appointments = a;
+    await Promise.allSettled([loadSpecialties()]);
 
-    $('#nMed').textContent = d.length;
-    $('#nPac').textContent = p.length;
-    $('#nPen').textContent = pend.length;
+    const sucessos = resultados.filter(r => r.status === 'fulfilled').length;
 
-    $('#nAge').textContent = a.filter(
-        x => x.status === 'agendada'
-    ).length;
-
-    $('#recent').innerHTML = pend.slice(0, 5).map(c => `
-        <div class="row">
-            <div class="initial">${esc(initials(c.paciente))}</div>
-
-            <div class="row-info">
-                <b>${esc(c.paciente)}</b>
-                <small>${esc(c.especialidade)} · ${esc(c.profissional)}</small>
-            </div>
-
-            ${status(c.status)}
-        </div>
-    `).join('') || '<div class="empty">Nenhum pedido pendente.</div>';
-
-    await loadSpecialties();
-
-    $('#apiText').textContent = 'Sistema conectado';
-    $('.api-state').classList.add('online');
+    if (sucessos === resultados.length) {
+        $('#apiText').textContent = 'Sistema conectado';
+        $('.api-state').classList.add('online');
+    } else if (sucessos > 0) {
+        $('#apiText').textContent = 'Conexão parcial';
+        $('.api-state').classList.remove('online');
+        console.error('Algumas informações não puderam ser carregadas:', resultados);
+    } else {
+        $('#apiText').textContent = 'API indisponível';
+        $('.api-state').classList.remove('online');
+        console.error('Não foi possível carregar os dados do painel:', resultados);
+    }
 }
 
-// Cadastro de médicos
+async function atualizar(...funcoes) {
+    const resultados = await Promise.allSettled(funcoes.map(f => f()));
+
+    resultados
+        .filter(r => r.status === 'rejected')
+        .forEach(r => console.error(r.reason));
+
+    await dashboard();
+}
+
+function go(id) {
+    $$('.page').forEach(p => p.classList.toggle('show', p.id === id));
+    $$('.nav').forEach(b => b.classList.toggle('active', b.dataset.page === id));
+
+    $('#crumb').textContent =
+        $(`.nav[data-page="${id}"]`)?.textContent.trim() || id;
+
+    $('#sidebar').classList.remove('open');
+
+    if (id === 'inicio') dashboard();
+    if (id === 'medicos') atualizar(loadDoctors, loadSpecialties);
+    if (id === 'pacientes') loadPatients().catch(e => toast(e.message, true));
+
+    if (id === 'consultas') {
+        atualizar(loadDoctors, loadPatients, loadAppointments);
+    }
+
+    if (id === 'pendentes') loadPending().catch(e => toast(e.message, true));
+    if (id === 'especialidades') loadSpecialties().catch(e => toast(e.message, true));
+}
+
+$$('[data-page]').forEach(b => b.onclick = () => go(b.dataset.page));
+$$('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
+
+$('#menu').onclick = () => $('#sidebar').classList.toggle('open');
 
 $('#doctorForm').onsubmit = async e => {
     e.preventDefault();
@@ -388,18 +338,15 @@ $('#doctorForm').onsubmit = async e => {
         f.reset();
 
         feedback('doctorMsg', 'Médico cadastrado!');
-        toast('Profissional cadastrado.');
+        toast('Profissional cadastrado com sucesso.');
 
-        await Promise.all([
-            loadDoctors(),
-            dashboard()
-        ]);
+        await atualizar(loadDoctors, loadSpecialties);
+
     } catch (x) {
         feedback('doctorMsg', x.message, true);
+        toast(x.message, true);
     }
 };
-
-// Cadastro de pacientes
 
 $('#patientForm').onsubmit = async e => {
     e.preventDefault();
@@ -420,18 +367,15 @@ $('#patientForm').onsubmit = async e => {
         f.reset();
 
         feedback('patientMsg', 'Paciente cadastrado!');
-        toast('Paciente cadastrado.');
+        toast('Paciente cadastrado com sucesso.');
 
-        await Promise.all([
-            loadPatients(),
-            dashboard()
-        ]);
+        await atualizar(loadPatients);
+
     } catch (x) {
         feedback('patientMsg', x.message, true);
+        toast(x.message, true);
     }
 };
-
-// Seleção de médico
 
 $('#doctorSelect').onchange = e => {
     const d = S.doctors.find(
@@ -440,8 +384,6 @@ $('#doctorSelect').onchange = e => {
 
     $('#chosenSpecialty').value = d?.especialidade || '';
 };
-
-// Solicitação de consultas
 
 $('#appointmentForm').onsubmit = async e => {
     e.preventDefault();
@@ -461,27 +403,18 @@ $('#appointmentForm').onsubmit = async e => {
         });
 
         f.reset();
-
         $('#chosenSpecialty').value = '';
 
-        feedback(
-            'appointmentMsg',
-            'Pedido enviado e aguardando agendamento.'
-        );
-
+        feedback('appointmentMsg', 'Pedido enviado e aguardando agendamento.');
         toast('Solicitação registrada como pendente.');
 
-        await Promise.all([
-            loadPending(),
-            loadAppointments(),
-            dashboard()
-        ]);
+        await atualizar(loadPending, loadAppointments);
+
     } catch (x) {
         feedback('appointmentMsg', x.message, true);
+        toast(x.message, true);
     }
 };
-
-// Agendamento de pedidos pendentes
 
 $('#pending').onsubmit = async e => {
     const f = e.target.closest('form[data-id]');
@@ -498,21 +431,16 @@ $('#pending').onsubmit = async e => {
 
         toast('Consulta agendada com sucesso.');
 
-        await Promise.all([
-            loadPending(),
-            loadAppointments(),
-            dashboard()
-        ]);
+        await atualizar(loadPending, loadAppointments);
+
     } catch (x) {
         toast(x.message, true);
     }
 };
 
-// Atualização da lista
-
-$('#refresh').onclick = loadPending;
-
-// Data do painel
+$('#refresh').onclick = () => {
+    atualizar(loadPending).catch(e => toast(e.message, true));
+};
 
 $('#today').textContent = new Date().toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -520,18 +448,4 @@ $('#today').textContent = new Date().toLocaleDateString('pt-BR', {
     year: 'numeric'
 });
 
-// Inicialização do sistema
-
-(async () => {
-    try {
-        await api('/');
-        await dashboard();
-    } catch (e) {
-        $('#apiText').textContent = 'API indisponível';
-
-        toast(
-            'Não foi possível conectar. Confira o MySQL e execute python run.py.',
-            true
-        );
-    }
-})();
+dashboard();
