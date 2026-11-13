@@ -64,7 +64,7 @@
             </div>
         </header>
 
-        <!-- Visão geral -->
+        <!-- VISÃO GERAL -->
 
         <section id="inicio" class="page show">
 
@@ -79,6 +79,7 @@
             </div>
 
             <div class="stats">
+
                 <article>
                     <span>Médicos cadastrados</span>
                     <b id="nMed">—</b>
@@ -102,11 +103,13 @@
                     <b id="nAge">—</b>
                     <small>Atendimentos confirmados</small>
                 </article>
+
             </div>
 
             <div class="columns">
 
                 <article class="panel">
+
                     <div class="panel-title">
                         <div>
                             <small class="eyebrow">ACOMPANHAMENTO</small>
@@ -117,9 +120,11 @@
                     </div>
 
                     <div id="recent"></div>
+
                 </article>
 
                 <article class="panel">
+
                     <div class="panel-title">
                         <div>
                             <small class="eyebrow">ÁREAS DE CUIDADO</small>
@@ -130,6 +135,7 @@
                     </div>
 
                     <div id="summary"></div>
+
                 </article>
 
             </div>
@@ -140,7 +146,7 @@
 
         </section>
 
-        <!-- Médicos -->
+        <!-- MÉDICOS -->
 
         <section id="medicos" class="page">
 
@@ -155,6 +161,7 @@
             <div class="columns">
 
                 <article class="panel">
+
                     <h2>Cadastrar médico</h2>
                     <p class="sub">Preencha os dados do profissional.</p>
 
@@ -190,26 +197,30 @@
                             <textarea name="minicurriculo" rows="3"></textarea>
                         </label>
 
-                        <button class="primary">Salvar médico</button>
+                        <button type="submit" class="primary">Salvar médico</button>
+
                         <span id="doctorMsg" class="msg"></span>
 
                     </form>
+
                 </article>
 
                 <article class="panel">
+
                     <div class="panel-title">
                         <h2>Profissionais disponíveis</h2>
                         <span class="pill" id="doctorCount">0</span>
                     </div>
 
                     <div id="doctors"></div>
+
                 </article>
 
             </div>
 
         </section>
 
-        <!-- Pacientes -->
+        <!-- PACIENTES -->
 
         <section id="pacientes" class="page">
 
@@ -224,6 +235,7 @@
             <div class="columns">
 
                 <article class="panel">
+
                     <h2>Novo paciente</h2>
                     <p class="sub">Dados para identificação e contato.</p>
 
@@ -254,26 +266,30 @@
                             <input name="telefone" required>
                         </label>
 
-                        <button class="primary">Cadastrar paciente</button>
+                        <button type="submit" class="primary">Cadastrar paciente</button>
+
                         <span id="patientMsg" class="msg"></span>
 
                     </form>
+
                 </article>
 
                 <article class="panel">
+
                     <div class="panel-title">
                         <h2>Pacientes cadastrados</h2>
                         <span class="pill" id="patientCount">0</span>
                     </div>
 
                     <div id="patients" class="tablebox"></div>
+
                 </article>
 
             </div>
 
         </section>
 
-        <!-- Consultas -->
+        <!-- CONSULTAS -->
 
         <section id="consultas" class="page">
 
@@ -288,12 +304,14 @@
             <article class="panel narrow">
 
                 <div class="panel-title">
+
                     <div>
                         <h2>Novo pedido de consulta</h2>
                         <p class="sub">O pedido será criado com status pendente.</p>
                     </div>
 
                     <span class="status pendente">Pendente</span>
+
                 </div>
 
                 <form id="appointmentForm" class="form">
@@ -318,21 +336,25 @@
                         <textarea name="observacoes" rows="3"></textarea>
                     </label>
 
-                    <button class="primary">Enviar solicitação</button>
-                    <span id="appointmentMsg" class="msg"></span>
+                    <button type="submit" class="primary">Enviar solicitação</button>
+
+                    <span id="appointmentMsg" class="msg confirmation-box"></span>
 
                 </form>
 
             </article>
 
             <article class="panel">
+
                 <h2>Consultas registradas</h2>
+
                 <div id="appointments" class="tablebox"></div>
+
             </article>
 
         </section>
 
-        <!-- Pedidos pendentes -->
+        <!-- PEDIDOS PENDENTES -->
 
         <section id="pendentes" class="page">
 
@@ -343,14 +365,15 @@
                     <p>Solicitações aguardando confirmação de data e horário.</p>
                 </div>
 
-                <button class="secondary" id="refresh">↻ Atualizar lista</button>
+                <button type="button" class="secondary" id="refresh">↻ Atualizar lista</button>
+
             </div>
 
             <div id="pending" class="pending-grid"></div>
 
         </section>
 
-        <!-- Especialidades -->
+        <!-- ESPECIALIDADES -->
 
         <section id="especialidades" class="page">
 
@@ -371,6 +394,8 @@
         </footer>
 
     </main>
+
+    <!-- MENSAGENS DO SISTEMA -->
 
     <div id="toast" class="toast"></div>
 
