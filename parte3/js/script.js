@@ -124,16 +124,16 @@ $('#menu').onclick = () => {
     $('#sidebar').classList.toggle('open');
 };
 
+// Especialidades
+
 async function loadSpecialties() {
     S.specialties = await api('/especialidades');
 
     $('#specialtySelect').innerHTML =
         '<option value="">Selecione</option>' +
-        S.specialties.map(s => `
-            <option value="${s.id_especialidades}">
-                ${esc(s.nome)}
-            </option>
-        `).join('');
+        S.specialties.map(s =>
+            `<option value="${s.id_especialidades}">${esc(s.nome)}</option>`
+        ).join('');
 
     $('#specialties').innerHTML = S.specialties.map((s, i) => `
         <article class="specialty-card">
@@ -157,6 +157,8 @@ async function loadSpecialties() {
     `).join('');
 }
 
+// Médicos
+
 async function loadDoctors() {
     S.doctors = await api('/profissionais');
 
@@ -165,17 +167,20 @@ async function loadDoctors() {
     $('#doctors').innerHTML = S.doctors.map(d => `
         <div class="doctor">
             <div class="initial">${esc(initials(d.nome))}</div>
+
             <div>
                 <b>${esc(d.nome)}</b>
+
                 <small>
                     CRM ${esc(d.crm)} · ${esc(d.email)}<br>
                     ${esc(d.telefone)}
                 </small>
+
                 <span class="tag">${esc(d.especialidade)}</span>
+
                 ${d.minicurriculo
                     ? `<small>${esc(d.minicurriculo)}</small>`
-                    : ''
-                }
+                    : ''}
             </div>
         </div>
     `).join('') || '<div class="empty">Nenhum médico cadastrado.</div>';
@@ -188,6 +193,8 @@ async function loadDoctors() {
             </option>
         `).join('');
 }
+
+// Pacientes
 
 async function loadPatients() {
     S.patients = await api('/pacientes');
@@ -204,6 +211,7 @@ async function loadPatients() {
                         <th>TELEFONE</th>
                     </tr>
                 </thead>
+
                 <tbody>
                     ${S.patients.map(p => `
                         <tr>
@@ -226,6 +234,8 @@ async function loadPatients() {
         `).join('');
 }
 
+// Pedidos pendentes
+
 async function loadPending() {
     S.pending = await api('/consultas/pendentes');
 
@@ -239,7 +249,6 @@ async function loadPending() {
             </div>
 
             <h3>${esc(c.paciente)}</h3>
-
             <p>Solicitação para ${esc(c.especialidade)}</p>
 
             <div class="meta">
@@ -254,10 +263,7 @@ async function loadPending() {
                 </div>
             </div>
 
-            ${c.observacoes
-                ? `<p>${esc(c.observacoes)}</p>`
-                : ''
-            }
+            ${c.observacoes ? `<p>${esc(c.observacoes)}</p>` : ''}
 
             <form class="schedule" data-id="${c.id_consulta}">
                 <label>
@@ -272,11 +278,7 @@ async function loadPending() {
 
                 <label>
                     Horário
-                    <input
-                        name="horario_consulta"
-                        type="time"
-                        required
-                    >
+                    <input name="horario_consulta" type="time" required>
                 </label>
 
                 <button class="primary">Agendar</button>
@@ -284,6 +286,8 @@ async function loadPending() {
         </article>
     `).join('') || '<div class="panel empty">Não há pedidos pendentes no momento.</div>';
 }
+
+// Consultas
 
 async function loadAppointments() {
     S.appointments = await api('/consultas');
@@ -321,6 +325,8 @@ async function loadAppointments() {
         : '<div class="empty">Nenhuma consulta registrada.</div>';
 }
 
+// Painel inicial
+
 async function dashboard() {
     const [d, p, pend, a] = await Promise.all([
         api('/profissionais'),
@@ -348,9 +354,7 @@ async function dashboard() {
 
             <div class="row-info">
                 <b>${esc(c.paciente)}</b>
-                <small>
-                    ${esc(c.especialidade)} · ${esc(c.profissional)}
-                </small>
+                <small>${esc(c.especialidade)} · ${esc(c.profissional)}</small>
             </div>
 
             ${status(c.status)}
@@ -362,6 +366,8 @@ async function dashboard() {
     $('#apiText').textContent = 'Sistema conectado';
     $('.api-state').classList.add('online');
 }
+
+// Cadastro de médicos
 
 $('#doctorForm').onsubmit = async e => {
     e.preventDefault();
@@ -393,6 +399,8 @@ $('#doctorForm').onsubmit = async e => {
     }
 };
 
+// Cadastro de pacientes
+
 $('#patientForm').onsubmit = async e => {
     e.preventDefault();
 
@@ -423,6 +431,8 @@ $('#patientForm').onsubmit = async e => {
     }
 };
 
+// Seleção de médico
+
 $('#doctorSelect').onchange = e => {
     const d = S.doctors.find(
         x => Number(x.id_profissional) === Number(e.target.value)
@@ -430,6 +440,8 @@ $('#doctorSelect').onchange = e => {
 
     $('#chosenSpecialty').value = d?.especialidade || '';
 };
+
+// Solicitação de consultas
 
 $('#appointmentForm').onsubmit = async e => {
     e.preventDefault();
@@ -469,6 +481,8 @@ $('#appointmentForm').onsubmit = async e => {
     }
 };
 
+// Agendamento de pedidos pendentes
+
 $('#pending').onsubmit = async e => {
     const f = e.target.closest('form[data-id]');
 
@@ -494,13 +508,19 @@ $('#pending').onsubmit = async e => {
     }
 };
 
+// Atualização da lista
+
 $('#refresh').onclick = loadPending;
+
+// Data do painel
 
 $('#today').textContent = new Date().toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: 'long',
     year: 'numeric'
 });
+
+// Inicialização do sistema
 
 (async () => {
     try {
