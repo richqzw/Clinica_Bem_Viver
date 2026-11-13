@@ -1,26 +1,517 @@
-const API='/api';
-const S={doctors:[],patients:[],specialties:[],pending:[],appointments:[]};
-const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const initials=n=>String(n||'?').trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();
-async function api(path,opts={}){const r=await fetch(API+path,{...opts,headers:{'Content-Type':'application/json',...(opts.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.erro||`Erro ${r.status}`);return d}
-function toast(msg,error=false){const t=$('#toast');t.textContent=msg;t.className='toast show'+(error?' error':'');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.className='toast',3200)}
-function feedback(id,msg,error=false){const e=$('#'+id);e.textContent=msg;e.classList.toggle('error',error)}
-function values(form){return Object.fromEntries(new FormData(form).entries())}
-function status(s){const k=['pendente','agendada','cancelada','concluida'].includes(s)?s:'pendente';return `<span class="status ${k}">${k[0].toUpperCase()+k.slice(1)}</span>`}
-function dateBR(d){return d?new Date(String(d).slice(0,10)+'T00:00:00').toLocaleDateString('pt-BR'):'A definir'}
-function go(id){$$('.page').forEach(p=>p.classList.toggle('show',p.id===id));$$('.nav').forEach(b=>b.classList.toggle('active',b.dataset.page===id));$('#crumb').textContent=$(`.nav[data-page="${id}"]`)?.textContent.trim()||id;$('#sidebar').classList.remove('open');if(id==='medicos')loadDoctors();if(id==='pacientes')loadPatients();if(id==='consultas'){loadDoctors();loadPatients();loadAppointments()}if(id==='pendentes')loadPending();if(id==='especialidades')loadSpecialties()}
-$$('[data-page]').forEach(b=>b.onclick=()=>go(b.dataset.page));$$('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));$('#menu').onclick=()=>$('#sidebar').classList.toggle('open');
-async function loadSpecialties(){S.specialties=await api('/especialidades');$('#specialtySelect').innerHTML='<option value="">Selecione</option>'+S.specialties.map(s=>`<option value="${s.id_especialidades}">${esc(s.nome)}</option>`).join('');$('#specialties').innerHTML=S.specialties.map((s,i)=>`<article class="specialty-card"><div class="symbol">${['✳','♡','✦','⌁','♧','◇'][i%6]}</div><h3>${esc(s.nome)}</h3><p>${esc(s.descricao||'Especialidade disponível na clínica.')}</p></article>`).join('')||'<div class="panel empty">Sem especialidades cadastradas.</div>';$('#summary').innerHTML=S.specialties.map(s=>`<div class="row"><div class="row-info"><b>${esc(s.nome)}</b></div><span class="pill">${S.doctors.filter(d=>Number(d.id_especialidades)===Number(s.id_especialidades)).length} médicos</span></div>`).join('')}
-async function loadDoctors(){S.doctors=await api('/profissionais');$('#doctorCount').textContent=S.doctors.length;$('#doctors').innerHTML=S.doctors.map(d=>`<div class="doctor"><div class="initial">${esc(initials(d.nome))}</div><div><b>${esc(d.nome)}</b><small>CRM ${esc(d.crm)} · ${esc(d.email)}<br>${esc(d.telefone)}</small><span class="tag">${esc(d.especialidade)}</span>${d.minicurriculo?`<small>${esc(d.minicurriculo)}</small>`:''}</div></div>`).join('')||'<div class="empty">Nenhum médico cadastrado.</div>';$('#doctorSelect').innerHTML='<option value="">Selecione o médico</option>'+S.doctors.map(d=>`<option value="${d.id_profissional}">${esc(d.nome)} · ${esc(d.especialidade)}</option>`).join('')}
-async function loadPatients(){S.patients=await api('/pacientes');$('#patientCount').textContent=S.patients.length;$('#patients').innerHTML=S.patients.length?`<table><thead><tr><th>NOME</th><th>CPF</th><th>TELEFONE</th></tr></thead><tbody>${S.patients.map(p=>`<tr><td>${esc(p.nome)}</td><td>${esc(p.cpf)}</td><td>${esc(p.telefone)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Nenhum paciente cadastrado.</div>';$('#patientSelect').innerHTML='<option value="">Selecione o paciente</option>'+S.patients.map(p=>`<option value="${p.id_paciente}">${esc(p.nome)}</option>`).join('')}
-async function loadPending(){S.pending=await api('/consultas/pendentes');$('#nPen').textContent=S.pending.length;$('#pending').innerHTML=S.pending.map(c=>`<article class="pending-card"><div class="panel-title"><small>PEDIDO #${c.id_consulta}</small>${status(c.status)}</div><h3>${esc(c.paciente)}</h3><p>Solicitação para ${esc(c.especialidade)}</p><div class="meta"><div><small>MÉDICO</small><b>${esc(c.profissional)}</b></div><div><small>TELEFONE</small><b>${esc(c.telefone)}</b></div></div>${c.observacoes?`<p>${esc(c.observacoes)}</p>`:''}<form class="schedule" data-id="${c.id_consulta}"><label>Data<input name="data_consulta" type="date" min="${new Date().toISOString().slice(0,10)}" required></label><label>Horário<input name="horario_consulta" type="time" required></label><button class="primary">Agendar</button></form></article>`).join('')||'<div class="panel empty">Não há pedidos pendentes no momento.</div>'}
-async function loadAppointments(){S.appointments=await api('/consultas');$('#nAge').textContent=S.appointments.filter(c=>c.status==='agendada').length;$('#appointments').innerHTML=S.appointments.length?`<table><thead><tr><th>PACIENTE</th><th>MÉDICO</th><th>ESPECIALIDADE</th><th>DATA</th><th>STATUS</th></tr></thead><tbody>${S.appointments.map(c=>`<tr><td>${esc(c.paciente)}</td><td>${esc(c.profissional)}</td><td>${esc(c.especialidade)}</td><td>${dateBR(c.data_consulta)}</td><td>${status(c.status)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Nenhuma consulta registrada.</div>'}
-async function dashboard(){const [d,p,pend,a]=await Promise.all([api('/profissionais'),api('/pacientes'),api('/consultas/pendentes'),api('/consultas')]);S.doctors=d;S.patients=p;S.pending=pend;S.appointments=a;$('#nMed').textContent=d.length;$('#nPac').textContent=p.length;$('#nPen').textContent=pend.length;$('#nAge').textContent=a.filter(x=>x.status==='agendada').length;$('#recent').innerHTML=pend.slice(0,5).map(c=>`<div class="row"><div class="initial">${esc(initials(c.paciente))}</div><div class="row-info"><b>${esc(c.paciente)}</b><small>${esc(c.especialidade)} · ${esc(c.profissional)}</small></div>${status(c.status)}</div>`).join('')||'<div class="empty">Nenhum pedido pendente.</div>';await loadSpecialties();$('#apiText').textContent='Sistema conectado';$('.api-state').classList.add('online')}
-$('#doctorForm').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,d=values(f);d.id_especialidades=Number(d.id_especialidades);feedback('doctorMsg','Salvando…');try{await api('/profissionais',{method:'POST',body:JSON.stringify(d)});f.reset();feedback('doctorMsg','Médico cadastrado!');toast('Profissional cadastrado.');await Promise.all([loadDoctors(),dashboard()])}catch(x){feedback('doctorMsg',x.message,true)}};
-$('#patientForm').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,d=values(f);d.cpf=d.cpf.replace(/\D/g,'');feedback('patientMsg','Salvando…');try{await api('/pacientes',{method:'POST',body:JSON.stringify(d)});f.reset();feedback('patientMsg','Paciente cadastrado!');toast('Paciente cadastrado.');await Promise.all([loadPatients(),dashboard()])}catch(x){feedback('patientMsg',x.message,true)}};
-$('#doctorSelect').onchange=e=>{const d=S.doctors.find(x=>Number(x.id_profissional)===Number(e.target.value));$('#chosenSpecialty').value=d?.especialidade||''};
-$('#appointmentForm').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,d=values(f);d.id_paciente=Number(d.id_paciente);d.id_profissional=Number(d.id_profissional);feedback('appointmentMsg','Enviando…');try{await api('/consultas',{method:'POST',body:JSON.stringify(d)});f.reset();$('#chosenSpecialty').value='';feedback('appointmentMsg','Pedido enviado e aguardando agendamento.');toast('Solicitação registrada como pendente.');await Promise.all([loadPending(),loadAppointments(),dashboard()])}catch(x){feedback('appointmentMsg',x.message,true)}};
-$('#pending').onsubmit=async e=>{const f=e.target.closest('form[data-id]');if(!f)return;e.preventDefault();try{await api(`/consultas/${f.dataset.id}/agendar`,{method:'PATCH',body:JSON.stringify(values(f))});toast('Consulta agendada com sucesso.');await Promise.all([loadPending(),loadAppointments(),dashboard()])}catch(x){toast(x.message,true)}};
-$('#refresh').onclick=loadPending;$('#today').textContent=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
-(async()=>{try{await api('/');await dashboard()}catch(e){$('#apiText').textContent='API indisponível';toast('Não foi possível conectar. Confira o MySQL e execute python run.py.',true)}})();
+
+const API = '/api';
+
+const S = {
+    doctors: [],
+    patients: [],
+    specialties: [],
+    pending: [],
+    appointments: []
+};
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+}[c]));
+
+const initials = n => String(n || '?')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map(x => x[0])
+    .join('')
+    .toUpperCase();
+
+async function api(path, opts = {}) {
+    const r = await fetch(API + path, {
+        ...opts,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(opts.headers || {})
+        }
+    });
+
+    const d = await r.json().catch(() => ({}));
+
+    if (!r.ok) {
+        throw Error(d.erro || `Erro ${r.status}`);
+    }
+
+    return d;
+}
+
+function toast(msg, error = false) {
+    const t = $('#toast');
+
+    t.textContent = msg;
+    t.className = 'toast show' + (error ? ' error' : '');
+
+    clearTimeout(toast.timer);
+
+    toast.timer = setTimeout(() => {
+        t.className = 'toast';
+    }, 3200);
+}
+
+function feedback(id, msg, error = false) {
+    const e = $('#' + id);
+
+    e.textContent = msg;
+    e.classList.toggle('error', error);
+}
+
+function values(form) {
+    return Object.fromEntries(new FormData(form).entries());
+}
+
+function status(s) {
+    const k = ['pendente', 'agendada', 'cancelada', 'concluida'].includes(s)
+        ? s
+        : 'pendente';
+
+    return `<span class="status ${k}">${k[0].toUpperCase() + k.slice(1)}</span>`;
+}
+
+function dateBR(d) {
+    return d
+        ? new Date(String(d).slice(0, 10) + 'T00:00:00').toLocaleDateString('pt-BR')
+        : 'A definir';
+}
+
+function go(id) {
+    $$('.page').forEach(p => {
+        p.classList.toggle('show', p.id === id);
+    });
+
+    $$('.nav').forEach(b => {
+        b.classList.toggle('active', b.dataset.page === id);
+    });
+
+    $('#crumb').textContent = $(`.nav[data-page="${id}"]`)?.textContent.trim() || id;
+
+    $('#sidebar').classList.remove('open');
+
+    if (id === 'medicos') loadDoctors();
+
+    if (id === 'pacientes') loadPatients();
+
+    if (id === 'consultas') {
+        loadDoctors();
+        loadPatients();
+        loadAppointments();
+    }
+
+    if (id === 'pendentes') loadPending();
+
+    if (id === 'especialidades') loadSpecialties();
+}
+
+$$('[data-page]').forEach(b => {
+    b.onclick = () => go(b.dataset.page);
+});
+
+$$('[data-go]').forEach(b => {
+    b.onclick = () => go(b.dataset.go);
+});
+
+$('#menu').onclick = () => {
+    $('#sidebar').classList.toggle('open');
+};
+
+async function loadSpecialties() {
+    S.specialties = await api('/especialidades');
+
+    $('#specialtySelect').innerHTML =
+        '<option value="">Selecione</option>' +
+        S.specialties.map(s => `
+            <option value="${s.id_especialidades}">
+                ${esc(s.nome)}
+            </option>
+        `).join('');
+
+    $('#specialties').innerHTML = S.specialties.map((s, i) => `
+        <article class="specialty-card">
+            <div class="symbol">${['✳', '♡', '✦', '⌁', '♧', '◇'][i % 6]}</div>
+            <h3>${esc(s.nome)}</h3>
+            <p>${esc(s.descricao || 'Especialidade disponível na clínica.')}</p>
+        </article>
+    `).join('') || '<div class="panel empty">Sem especialidades cadastradas.</div>';
+
+    $('#summary').innerHTML = S.specialties.map(s => `
+        <div class="row">
+            <div class="row-info">
+                <b>${esc(s.nome)}</b>
+            </div>
+            <span class="pill">
+                ${S.doctors.filter(d =>
+                    Number(d.id_especialidades) === Number(s.id_especialidades)
+                ).length} médicos
+            </span>
+        </div>
+    `).join('');
+}
+
+async function loadDoctors() {
+    S.doctors = await api('/profissionais');
+
+    $('#doctorCount').textContent = S.doctors.length;
+
+    $('#doctors').innerHTML = S.doctors.map(d => `
+        <div class="doctor">
+            <div class="initial">${esc(initials(d.nome))}</div>
+            <div>
+                <b>${esc(d.nome)}</b>
+                <small>
+                    CRM ${esc(d.crm)} · ${esc(d.email)}<br>
+                    ${esc(d.telefone)}
+                </small>
+                <span class="tag">${esc(d.especialidade)}</span>
+                ${d.minicurriculo
+                    ? `<small>${esc(d.minicurriculo)}</small>`
+                    : ''
+                }
+            </div>
+        </div>
+    `).join('') || '<div class="empty">Nenhum médico cadastrado.</div>';
+
+    $('#doctorSelect').innerHTML =
+        '<option value="">Selecione o médico</option>' +
+        S.doctors.map(d => `
+            <option value="${d.id_profissional}">
+                ${esc(d.nome)} · ${esc(d.especialidade)}
+            </option>
+        `).join('');
+}
+
+async function loadPatients() {
+    S.patients = await api('/pacientes');
+
+    $('#patientCount').textContent = S.patients.length;
+
+    $('#patients').innerHTML = S.patients.length
+        ? `
+            <table>
+                <thead>
+                    <tr>
+                        <th>NOME</th>
+                        <th>CPF</th>
+                        <th>TELEFONE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${S.patients.map(p => `
+                        <tr>
+                            <td>${esc(p.nome)}</td>
+                            <td>${esc(p.cpf)}</td>
+                            <td>${esc(p.telefone)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `
+        : '<div class="empty">Nenhum paciente cadastrado.</div>';
+
+    $('#patientSelect').innerHTML =
+        '<option value="">Selecione o paciente</option>' +
+        S.patients.map(p => `
+            <option value="${p.id_paciente}">
+                ${esc(p.nome)}
+            </option>
+        `).join('');
+}
+
+async function loadPending() {
+    S.pending = await api('/consultas/pendentes');
+
+    $('#nPen').textContent = S.pending.length;
+
+    $('#pending').innerHTML = S.pending.map(c => `
+        <article class="pending-card">
+            <div class="panel-title">
+                <small>PEDIDO #${c.id_consulta}</small>
+                ${status(c.status)}
+            </div>
+
+            <h3>${esc(c.paciente)}</h3>
+
+            <p>Solicitação para ${esc(c.especialidade)}</p>
+
+            <div class="meta">
+                <div>
+                    <small>MÉDICO</small>
+                    <b>${esc(c.profissional)}</b>
+                </div>
+
+                <div>
+                    <small>TELEFONE</small>
+                    <b>${esc(c.telefone)}</b>
+                </div>
+            </div>
+
+            ${c.observacoes
+                ? `<p>${esc(c.observacoes)}</p>`
+                : ''
+            }
+
+            <form class="schedule" data-id="${c.id_consulta}">
+                <label>
+                    Data
+                    <input
+                        name="data_consulta"
+                        type="date"
+                        min="${new Date().toISOString().slice(0, 10)}"
+                        required
+                    >
+                </label>
+
+                <label>
+                    Horário
+                    <input
+                        name="horario_consulta"
+                        type="time"
+                        required
+                    >
+                </label>
+
+                <button class="primary">Agendar</button>
+            </form>
+        </article>
+    `).join('') || '<div class="panel empty">Não há pedidos pendentes no momento.</div>';
+}
+
+async function loadAppointments() {
+    S.appointments = await api('/consultas');
+
+    $('#nAge').textContent = S.appointments.filter(
+        c => c.status === 'agendada'
+    ).length;
+
+    $('#appointments').innerHTML = S.appointments.length
+        ? `
+            <table>
+                <thead>
+                    <tr>
+                        <th>PACIENTE</th>
+                        <th>MÉDICO</th>
+                        <th>ESPECIALIDADE</th>
+                        <th>DATA</th>
+                        <th>STATUS</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    ${S.appointments.map(c => `
+                        <tr>
+                            <td>${esc(c.paciente)}</td>
+                            <td>${esc(c.profissional)}</td>
+                            <td>${esc(c.especialidade)}</td>
+                            <td>${dateBR(c.data_consulta)}</td>
+                            <td>${status(c.status)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `
+        : '<div class="empty">Nenhuma consulta registrada.</div>';
+}
+
+async function dashboard() {
+    const [d, p, pend, a] = await Promise.all([
+        api('/profissionais'),
+        api('/pacientes'),
+        api('/consultas/pendentes'),
+        api('/consultas')
+    ]);
+
+    S.doctors = d;
+    S.patients = p;
+    S.pending = pend;
+    S.appointments = a;
+
+    $('#nMed').textContent = d.length;
+    $('#nPac').textContent = p.length;
+    $('#nPen').textContent = pend.length;
+
+    $('#nAge').textContent = a.filter(
+        x => x.status === 'agendada'
+    ).length;
+
+    $('#recent').innerHTML = pend.slice(0, 5).map(c => `
+        <div class="row">
+            <div class="initial">${esc(initials(c.paciente))}</div>
+
+            <div class="row-info">
+                <b>${esc(c.paciente)}</b>
+                <small>
+                    ${esc(c.especialidade)} · ${esc(c.profissional)}
+                </small>
+            </div>
+
+            ${status(c.status)}
+        </div>
+    `).join('') || '<div class="empty">Nenhum pedido pendente.</div>';
+
+    await loadSpecialties();
+
+    $('#apiText').textContent = 'Sistema conectado';
+    $('.api-state').classList.add('online');
+}
+
+$('#doctorForm').onsubmit = async e => {
+    e.preventDefault();
+
+    const f = e.currentTarget;
+    const d = values(f);
+
+    d.id_especialidades = Number(d.id_especialidades);
+
+    feedback('doctorMsg', 'Salvando…');
+
+    try {
+        await api('/profissionais', {
+            method: 'POST',
+            body: JSON.stringify(d)
+        });
+
+        f.reset();
+
+        feedback('doctorMsg', 'Médico cadastrado!');
+        toast('Profissional cadastrado.');
+
+        await Promise.all([
+            loadDoctors(),
+            dashboard()
+        ]);
+    } catch (x) {
+        feedback('doctorMsg', x.message, true);
+    }
+};
+
+$('#patientForm').onsubmit = async e => {
+    e.preventDefault();
+
+    const f = e.currentTarget;
+    const d = values(f);
+
+    d.cpf = d.cpf.replace(/\D/g, '');
+
+    feedback('patientMsg', 'Salvando…');
+
+    try {
+        await api('/pacientes', {
+            method: 'POST',
+            body: JSON.stringify(d)
+        });
+
+        f.reset();
+
+        feedback('patientMsg', 'Paciente cadastrado!');
+        toast('Paciente cadastrado.');
+
+        await Promise.all([
+            loadPatients(),
+            dashboard()
+        ]);
+    } catch (x) {
+        feedback('patientMsg', x.message, true);
+    }
+};
+
+$('#doctorSelect').onchange = e => {
+    const d = S.doctors.find(
+        x => Number(x.id_profissional) === Number(e.target.value)
+    );
+
+    $('#chosenSpecialty').value = d?.especialidade || '';
+};
+
+$('#appointmentForm').onsubmit = async e => {
+    e.preventDefault();
+
+    const f = e.currentTarget;
+    const d = values(f);
+
+    d.id_paciente = Number(d.id_paciente);
+    d.id_profissional = Number(d.id_profissional);
+
+    feedback('appointmentMsg', 'Enviando…');
+
+    try {
+        await api('/consultas', {
+            method: 'POST',
+            body: JSON.stringify(d)
+        });
+
+        f.reset();
+
+        $('#chosenSpecialty').value = '';
+
+        feedback(
+            'appointmentMsg',
+            'Pedido enviado e aguardando agendamento.'
+        );
+
+        toast('Solicitação registrada como pendente.');
+
+        await Promise.all([
+            loadPending(),
+            loadAppointments(),
+            dashboard()
+        ]);
+    } catch (x) {
+        feedback('appointmentMsg', x.message, true);
+    }
+};
+
+$('#pending').onsubmit = async e => {
+    const f = e.target.closest('form[data-id]');
+
+    if (!f) return;
+
+    e.preventDefault();
+
+    try {
+        await api(`/consultas/${f.dataset.id}/agendar`, {
+            method: 'PATCH',
+            body: JSON.stringify(values(f))
+        });
+
+        toast('Consulta agendada com sucesso.');
+
+        await Promise.all([
+            loadPending(),
+            loadAppointments(),
+            dashboard()
+        ]);
+    } catch (x) {
+        toast(x.message, true);
+    }
+};
+
+$('#refresh').onclick = loadPending;
+
+$('#today').textContent = new Date().toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+});
+
+(async () => {
+    try {
+        await api('/');
+        await dashboard();
+    } catch (e) {
+        $('#apiText').textContent = 'API indisponível';
+
+        toast(
+            'Não foi possível conectar. Confira o MySQL e execute python run.py.',
+            true
+        );
+    }
+})();
