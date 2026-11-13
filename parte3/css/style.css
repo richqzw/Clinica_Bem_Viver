@@ -21,7 +21,7 @@ body {
     font: 14px 'DM Sans', sans-serif;
 }
 
-/* Barra lateral */
+/* Barra lateral e logo */
 
 .sidebar {
     position: fixed;
@@ -37,28 +37,34 @@ body {
 
 .brand {
     display: flex;
-    gap: 10px;
     align-items: center;
+    gap: 10px;
     text-decoration: none;
     color: white;
-    font: 800 20px Manrope;
+    font: 800 21px Manrope;
     margin: 0 7px 48px;
 }
 
 .logo {
-    width: 36px;
-    height: 36px;
-    border-radius: 12px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
     background: var(--sage);
     color: #102c2a;
     display: grid;
     place-items: center;
-    font: 800 25px Georgia;
+    font: 800 14px Manrope;
+    letter-spacing: -1px;
+}
+
+.brand-name {
+    display: flex;
+    gap: 4px;
 }
 
 .light {
-    color: #9dcbb1;
-    font-weight: 500;
+    color: var(--sage);
+    font-weight: 800;
 }
 
 .label,

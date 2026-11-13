@@ -1,10 +1,9 @@
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
     <title>Clínica Bem Viver</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,11 +15,12 @@
 <body>
 
     <aside class="sidebar" id="sidebar">
+
         <a class="brand" href="#">
-            <span class="logo">b</span>
-            <span>
-                bem<span class="light">viver</span>
-                <small>CLÍNICA INTEGRADA</small>
+            <span class="logo">BV</span>
+            <span class="brand-name">
+                <span>Bem</span>
+                <span class="light">Viver</span>
             </span>
         </a>
 
@@ -40,9 +40,11 @@
             <p>Gestão simples para uma clínica que cuida de pessoas.</p>
             <small>BEM VIVER · SISTEMA 1.0</small>
         </div>
+
     </aside>
 
     <main>
+
         <header>
             <button id="menu" class="menu">☰</button>
 
@@ -62,7 +64,10 @@
             </div>
         </header>
 
+        <!-- Visão geral -->
+
         <section id="inicio" class="page show">
+
             <div class="heading">
                 <div>
                     <small class="eyebrow">GESTÃO DA CLÍNICA</small>
@@ -100,6 +105,7 @@
             </div>
 
             <div class="columns">
+
                 <article class="panel">
                     <div class="panel-title">
                         <div>
@@ -125,14 +131,19 @@
 
                     <div id="summary"></div>
                 </article>
+
             </div>
 
             <div class="note">
                 ✦　<b>Bem-estar em cada etapa.</b>　Cadastre profissionais e pacientes para começar.
             </div>
+
         </section>
 
+        <!-- Médicos -->
+
         <section id="medicos" class="page">
+
             <div class="heading">
                 <div>
                     <small class="eyebrow">CORPO CLÍNICO</small>
@@ -142,11 +153,13 @@
             </div>
 
             <div class="columns">
+
                 <article class="panel">
                     <h2>Cadastrar médico</h2>
                     <p class="sub">Preencha os dados do profissional.</p>
 
                     <form id="doctorForm" class="form">
+
                         <label>
                             Nome completo
                             <input name="nome" required>
@@ -179,6 +192,7 @@
 
                         <button class="primary">Salvar médico</button>
                         <span id="doctorMsg" class="msg"></span>
+
                     </form>
                 </article>
 
@@ -190,10 +204,15 @@
 
                     <div id="doctors"></div>
                 </article>
+
             </div>
+
         </section>
 
+        <!-- Pacientes -->
+
         <section id="pacientes" class="page">
+
             <div class="heading">
                 <div>
                     <small class="eyebrow">ACOLHIMENTO</small>
@@ -203,11 +222,13 @@
             </div>
 
             <div class="columns">
+
                 <article class="panel">
                     <h2>Novo paciente</h2>
                     <p class="sub">Dados para identificação e contato.</p>
 
                     <form id="patientForm" class="form">
+
                         <label>
                             Nome completo
                             <input name="nome" required>
@@ -235,6 +256,7 @@
 
                         <button class="primary">Cadastrar paciente</button>
                         <span id="patientMsg" class="msg"></span>
+
                     </form>
                 </article>
 
@@ -246,10 +268,15 @@
 
                     <div id="patients" class="tablebox"></div>
                 </article>
+
             </div>
+
         </section>
 
+        <!-- Consultas -->
+
         <section id="consultas" class="page">
+
             <div class="heading">
                 <div>
                     <small class="eyebrow">AGENDAMENTO</small>
@@ -259,6 +286,7 @@
             </div>
 
             <article class="panel narrow">
+
                 <div class="panel-title">
                     <div>
                         <h2>Novo pedido de consulta</h2>
@@ -269,6 +297,7 @@
                 </div>
 
                 <form id="appointmentForm" class="form">
+
                     <label>
                         Paciente
                         <select name="id_paciente" id="patientSelect" required></select>
@@ -291,16 +320,22 @@
 
                     <button class="primary">Enviar solicitação</button>
                     <span id="appointmentMsg" class="msg"></span>
+
                 </form>
+
             </article>
 
             <article class="panel">
                 <h2>Consultas registradas</h2>
                 <div id="appointments" class="tablebox"></div>
             </article>
+
         </section>
 
+        <!-- Pedidos pendentes -->
+
         <section id="pendentes" class="page">
+
             <div class="heading">
                 <div>
                     <small class="eyebrow">CENTRAL DE ATENDIMENTO</small>
@@ -312,9 +347,13 @@
             </div>
 
             <div id="pending" class="pending-grid"></div>
+
         </section>
 
+        <!-- Especialidades -->
+
         <section id="especialidades" class="page">
+
             <div class="heading">
                 <div>
                     <small class="eyebrow">ÁREAS DE CUIDADO</small>
@@ -324,15 +363,18 @@
             </div>
 
             <div id="specialties" class="specialty-grid"></div>
+
         </section>
 
         <footer>
             © 2026 Clínica Bem Viver　·　Cuidado, saúde e acolhimento.
         </footer>
+
     </main>
 
     <div id="toast" class="toast"></div>
 
     <script src="js/script.js"></script>
+
 </body>
 </html>
