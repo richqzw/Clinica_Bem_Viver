@@ -148,7 +148,7 @@ header {
     color: #87948d;
 }
 
-.api-state {
+.data-state {
     display: flex;
     align-items: center;
     gap: 9px;
@@ -163,7 +163,7 @@ header {
     background: #d0a35e;
 }
 
-.api-state.online #dot {
+.data-state.online #dot {
     background: #65a77c;
 }
 
@@ -428,6 +428,11 @@ header {
 .primary {
     background: var(--teal);
     color: white;
+}
+
+.primary:disabled {
+    cursor: wait;
+    opacity: .65;
 }
 
 .secondary {
@@ -731,14 +736,6 @@ footer {
     .crumb {
         margin-right: auto;
         margin-left: 10px;
-    }
-
-    .api-state {
-        font-size: 0;
-    }
-
-    .api-state #dot {
-        font-size: initial;
     }
 
     .user {

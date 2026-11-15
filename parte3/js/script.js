@@ -1,7 +1,5 @@
 
-const API = '/api';
-
-const S = {
+let S = {
     doctors: [],
     patients: [],
     specialties: [],
@@ -27,25 +25,6 @@ const initials = n => String(n || '?')
     .map(x => x[0])
     .join('')
     .toUpperCase();
-
-async function api(path, opts = {}) {
-    const r = await fetch(API + path, {
-        ...opts,
-        cache: 'no-store',
-        headers: {
-            'Content-Type': 'application/json',
-            ...(opts.headers || {})
-        }
-    });
-
-    const d = await r.json().catch(() => ({}));
-
-    if (!r.ok) {
-        throw Error(d.erro || `Erro ${r.status}`);
-    }
-
-    return d;
-}
 
 function toast(msg, error = false) {
     const t = $('#toast');
@@ -85,6 +64,12 @@ function dateBR(d) {
         : 'A definir';
 }
 
+function dataHoje() {
+    const agora = new Date();
+    const horaLocal = agora.getTime() - agora.getTimezoneOffset() * 60_000;
+    return new Date(horaLocal).toISOString().slice(0, 10);
+}
+
 function ask(label, current = '') {
     const v = prompt(label, current ?? '');
     return v === null ? null : v.trim();
@@ -95,9 +80,7 @@ function ask(label, current = '') {
 // ESPECIALIDADES
 // =========================
 
-async function loadSpecialties() {
-    S.specialties = await api('/especialidades');
-
+function renderSpecialties() {
     $('#specialtySelect').innerHTML =
         '<option value="">Selecione</option>' +
         S.specialties.map(s =>
@@ -131,9 +114,7 @@ async function loadSpecialties() {
 // MÉDICOS
 // =========================
 
-async function loadDoctors() {
-    S.doctors = await api('/profissionais');
-
+function renderDoctors() {
     $('#nMed').textContent = S.doctors.length;
     $('#doctorCount').textContent = S.doctors.length;
 
@@ -185,9 +166,7 @@ async function loadDoctors() {
 // PACIENTES
 // =========================
 
-async function loadPatients() {
-    S.patients = await api('/pacientes');
-
+function renderPatients() {
     $('#nPac').textContent = S.patients.length;
     $('#patientCount').textContent = S.patients.length;
 
@@ -244,9 +223,7 @@ async function loadPatients() {
 // CONSULTAS PENDENTES
 // =========================
 
-async function loadPending() {
-    S.pending = await api('/consultas/pendentes');
-
+function renderPending() {
     $('#nPen').textContent = S.pending.length;
 
     $('#pending').innerHTML = S.pending.map(c => `
@@ -283,7 +260,7 @@ async function loadPending() {
                     <input
                         name="data_consulta"
                         type="date"
-                        min="${new Date().toISOString().slice(0, 10)}"
+                        min="${dataHoje()}"
                         required
                     >
                 </label>
@@ -297,7 +274,7 @@ async function loadPending() {
                     >
                 </label>
 
-                <button class="primary">Agendar</button>
+                <button type="submit" class="primary">Agendar</button>
             </form>
 
         </article>
@@ -315,9 +292,7 @@ async function loadPending() {
 // CONSULTAS REGISTRADAS
 // =========================
 
-async function loadAppointments() {
-    S.appointments = await api('/consultas');
-
+function renderAppointments() {
     $('#nAge').textContent =
         S.appointments.filter(c => c.status === 'agendada').length;
 
@@ -398,35 +373,30 @@ function renderRecent() {
 // =========================
 
 async function dashboard() {
-    const results = await Promise.allSettled([
-        loadDoctors(),
-        loadPatients(),
-        loadPending(),
-        loadAppointments(),
-        loadSpecialties()
-    ]);
+    try {
+        S = await banco.listar();
+        const selecoes = $$('.form select').map(select => [select, select.value]);
 
-    const ok = results.filter(x => x.status === 'fulfilled').length;
+        renderDoctors();
+        renderPatients();
+        renderPending();
+        renderAppointments();
+        renderSpecialties();
 
-    $('#apiText').textContent =
-        ok === results.length
-            ? 'Sistema conectado'
-            : ok
-                ? 'Conexão parcial'
-                : 'API indisponível';
+        for (const [select, valor] of selecoes) {
+            if ([...select.options].some(opcao => opcao.value === valor)) {
+                select.value = valor;
+            }
+        }
+        mostrarEspecialidade();
 
-    $('.api-state').classList.toggle(
-        'online',
-        ok === results.length
-    );
-
-    results
-        .filter(x => x.status === 'rejected')
-        .forEach(x => console.error(x.reason));
-}
-
-async function refreshAll() {
-    await dashboard();
+        $('#dataStatus').textContent = 'Demonstração';
+        $('.data-state').classList.add('online');
+    } catch (erro) {
+        $('#dataStatus').textContent = 'Dados indisponíveis';
+        $('.data-state').classList.remove('online');
+        toast(erro.message, true);
+    }
 }
 
 
@@ -447,33 +417,6 @@ function go(id) {
         $(`.nav[data-page="${id}"]`)?.textContent.trim() || id;
 
     $('#sidebar').classList.remove('open');
-
-    const tasks = {
-        inicio: dashboard,
-
-        medicos: async () => {
-            await Promise.all([
-                loadDoctors(),
-                loadSpecialties()
-            ]);
-        },
-
-        pacientes: loadPatients,
-
-        consultas: async () => {
-            await Promise.all([
-                loadDoctors(),
-                loadPatients(),
-                loadAppointments()
-            ]);
-        },
-
-        pendentes: loadPending,
-        especialidades: loadSpecialties
-    };
-
-    (tasks[id] || (() => {}))()
-        .catch(e => toast(e.message, true));
 }
 
 $$('[data-page]').forEach(b => {
@@ -490,164 +433,80 @@ $('#menu').onclick = () => {
 
 
 // =========================
-// CADASTRAR MÉDICO
+// FORMULÁRIOS DE CADASTRO
 // =========================
 
-$('#doctorForm').onsubmit = async e => {
-    e.preventDefault();
+function cadastro(seletor, mensagemId, salvar, sucesso) {
+    const formulario = $(seletor);
+    const botao = formulario.querySelector('button[type="submit"]');
 
-    const f = e.currentTarget;
-    const d = values(f);
+    formulario.onsubmit = async evento => {
+        evento.preventDefault();
+        if (botao.disabled) return;
 
-    d.id_especialidades = Number(d.id_especialidades);
+        botao.disabled = true;
+        feedback(mensagemId, 'Salvando…');
 
-    feedback('doctorMsg', 'Salvando…');
+        try {
+            await salvar(values(formulario));
+            formulario.reset();
+            feedback(mensagemId, sucesso);
+            toast(sucesso);
+            await dashboard();
+        } catch (erro) {
+            feedback(mensagemId, erro.message, true);
+            toast(erro.message, true);
+        } finally {
+            botao.disabled = false;
+        }
+    };
+}
 
-    try {
-        await api('/profissionais', {
-            method: 'POST',
-            body: JSON.stringify(d)
-        });
+cadastro('#doctorForm', 'doctorMsg', banco.salvarMedico, 'Médico cadastrado com sucesso.');
+cadastro('#patientForm', 'patientMsg', banco.salvarPaciente, 'Paciente cadastrado com sucesso.');
+cadastro(
+    '#appointmentForm',
+    'appointmentMsg',
+    banco.salvarConsulta,
+    'Consulta registrada. O pedido está aguardando agendamento.'
+);
 
-        f.reset();
+function mostrarEspecialidade() {
+    const id = Number($('#doctorSelect').value);
+    const medico = S.doctors.find(d => d.id_profissional === id);
+    $('#chosenSpecialty').value = medico?.especialidade || '';
+}
 
-        feedback('doctorMsg', 'Médico cadastrado!');
-        toast('Médico cadastrado com sucesso.');
-
-        await refreshAll();
-
-    } catch (x) {
-        feedback('doctorMsg', x.message, true);
-        toast(x.message, true);
-    }
-};
-
-
-// =========================
-// CADASTRAR PACIENTE
-// =========================
-
-$('#patientForm').onsubmit = async e => {
-    e.preventDefault();
-
-    const f = e.currentTarget;
-    const d = values(f);
-
-    d.cpf = d.cpf.replace(/\D/g, '');
-
-    feedback('patientMsg', 'Salvando…');
-
-    try {
-        await api('/pacientes', {
-            method: 'POST',
-            body: JSON.stringify(d)
-        });
-
-        f.reset();
-
-        feedback('patientMsg', 'Paciente cadastrado!');
-        toast('Paciente cadastrado com sucesso.');
-
-        await refreshAll();
-
-    } catch (x) {
-        feedback('patientMsg', x.message, true);
-        toast(x.message, true);
-    }
-};
-
-
-// =========================
-// SELEÇÃO DE MÉDICO
-// =========================
-
-$('#doctorSelect').onchange = e => {
-    const d = S.doctors.find(x =>
-        Number(x.id_profissional) === Number(e.target.value)
-    );
-
-    $('#chosenSpecialty').value = d?.especialidade || '';
-};
-
-
-// =========================
-// REGISTRAR CONSULTA
-// =========================
-
-$('#appointmentForm').onsubmit = async e => {
-    e.preventDefault();
-
-    const f = e.currentTarget;
-    const d = values(f);
-
-    d.id_paciente = Number(d.id_paciente);
-    d.id_profissional = Number(d.id_profissional);
-
-    feedback('appointmentMsg', 'Registrando consulta…');
-
-    try {
-        await api('/consultas', {
-            method: 'POST',
-            body: JSON.stringify(d)
-        });
-
-        f.reset();
-
-        $('#chosenSpecialty').value = '';
-
-        feedback(
-            'appointmentMsg',
-            '✓ Consulta registrada com sucesso! O pedido está aguardando agendamento.'
-        );
-
-        toast('Consulta registrada com sucesso.');
-
-        await Promise.all([
-            loadPending(),
-            loadAppointments(),
-            dashboard()
-        ]);
-
-    } catch (x) {
-        feedback('appointmentMsg', x.message, true);
-        toast(x.message, true);
-    }
-};
+$('#doctorSelect').onchange = mostrarEspecialidade;
 
 
 // =========================
 // AGENDAR CONSULTA PENDENTE
 // =========================
 
-$('#pending').onsubmit = async e => {
-    const f = e.target.closest('form[data-id]');
+$('#pending').onsubmit = async evento => {
+    const formulario = evento.target.closest('form[data-id]');
+    if (!formulario) return;
 
-    if (!f) return;
+    evento.preventDefault();
+    const botao = formulario.querySelector('button[type="submit"]');
+    if (botao.disabled) return;
 
-    e.preventDefault();
+    botao.disabled = true;
+    const campos = values(formulario);
 
     try {
-        await api(`/consultas/${f.dataset.id}/agendar`, {
-            method: 'PATCH',
-            body: JSON.stringify(values(f))
-        });
-
+        await banco.agendar(Number(formulario.dataset.id), campos.data_consulta, campos.horario_consulta);
         toast('Consulta agendada com sucesso.');
-
-        await Promise.all([
-            loadPending(),
-            loadAppointments(),
-            dashboard()
-        ]);
-
-    } catch (x) {
-        toast(x.message, true);
+        await dashboard();
+    } catch (erro) {
+        toast(erro.message, true);
+    } finally {
+        botao.disabled = false;
     }
 };
 
-$('#refresh').onclick = () => {
-    loadPending().catch(e => toast(e.message, true));
-};
+$('#refresh').onclick = dashboard;
 
 
 // =========================
@@ -660,7 +519,7 @@ $('#doctors').onclick = async e => {
 
     if (edit) {
         const d = S.doctors.find(x =>
-            x.id_profissional == edit.dataset.editDoctor
+            x.id_profissional === Number(edit.dataset.editDoctor)
         );
 
         if (!d) return;
@@ -696,20 +555,13 @@ $('#doctors').onclick = async e => {
         if (especialidade === null) return;
 
         try {
-            await api(`/profissionais/${d.id_profissional}`, {
-                method: 'PUT',
-                body: JSON.stringify({
-                    nome,
-                    crm,
-                    email,
-                    telefone,
-                    minicurriculo,
-                    id_especialidades: Number(especialidade)
-                })
-            });
+            await banco.salvarMedico({
+                nome, crm, email, telefone, minicurriculo,
+                id_especialidades: especialidade
+            }, d.id_profissional);
 
             toast('Médico atualizado.');
-            await refreshAll();
+            await dashboard();
 
         } catch (x) {
             toast(x.message, true);
@@ -718,12 +570,10 @@ $('#doctors').onclick = async e => {
 
     if (del && confirm('Deseja realmente excluir este médico?')) {
         try {
-            await api(`/profissionais/${del.dataset.deleteDoctor}`, {
-                method: 'DELETE'
-            });
+            await banco.excluir('profissionais', Number(del.dataset.deleteDoctor));
 
             toast('Médico excluído.');
-            await refreshAll();
+            await dashboard();
 
         } catch (x) {
             toast(x.message, true);
@@ -742,7 +592,7 @@ $('#patients').onclick = async e => {
 
     if (edit) {
         const p = S.patients.find(x =>
-            x.id_paciente == edit.dataset.editPatient
+            x.id_paciente === Number(edit.dataset.editPatient)
         );
 
         if (!p) return;
@@ -755,7 +605,7 @@ $('#patients').onclick = async e => {
 
         const data_nascimento = ask(
             'Data de nascimento (AAAA-MM-DD):',
-            String(p.data_nascimento).slice(0, 10)
+            p.data_nascimento
         );
 
         if (data_nascimento === null) return;
@@ -767,19 +617,10 @@ $('#patients').onclick = async e => {
         if (telefone === null) return;
 
         try {
-            await api(`/pacientes/${p.id_paciente}`, {
-                method: 'PUT',
-                body: JSON.stringify({
-                    nome,
-                    cpf,
-                    data_nascimento,
-                    email,
-                    telefone
-                })
-            });
+            await banco.salvarPaciente({ nome, cpf, data_nascimento, email, telefone }, p.id_paciente);
 
             toast('Paciente atualizado.');
-            await refreshAll();
+            await dashboard();
 
         } catch (x) {
             toast(x.message, true);
@@ -788,12 +629,10 @@ $('#patients').onclick = async e => {
 
     if (del && confirm('Deseja realmente excluir este paciente?')) {
         try {
-            await api(`/pacientes/${del.dataset.deletePatient}`, {
-                method: 'DELETE'
-            });
+            await banco.excluir('pacientes', Number(del.dataset.deletePatient));
 
             toast('Paciente excluído.');
-            await refreshAll();
+            await dashboard();
 
         } catch (x) {
             toast(x.message, true);
@@ -812,7 +651,7 @@ $('#appointments').onclick = async e => {
 
     if (edit) {
         const c = S.appointments.find(x =>
-            x.id_consulta == edit.dataset.editAppointment
+            x.id_consulta === Number(edit.dataset.editAppointment)
         );
 
         if (!c) return;
@@ -827,27 +666,27 @@ $('#appointments').onclick = async e => {
 
         const id_paciente = ask(
             `ID do paciente:\n${patientOptions}`,
-            S.patients.find(p => p.nome === c.paciente)?.id_paciente || ''
+            c.id_paciente
         );
 
         if (id_paciente === null) return;
 
         const id_profissional = ask(
             `ID do médico:\n${doctorOptions}`,
-            S.doctors.find(d => d.nome === c.profissional)?.id_profissional || ''
+            c.id_profissional
         );
 
         if (id_profissional === null) return;
 
         const data_consulta = ask(
-            'Data (AAAA-MM-DD; deixe vazio se pendente):',
-            c.data_consulta ? String(c.data_consulta).slice(0, 10) : ''
+            'Data (AAAA-MM-DD, deixe vazio se pendente):',
+            c.data_consulta || ''
         );
 
         if (data_consulta === null) return;
 
         const horario_consulta = ask(
-            'Horário (HH:MM; deixe vazio se pendente):',
+            'Horário (HH:MM, deixe vazio se pendente):',
             c.horario_consulta || ''
         );
 
@@ -868,25 +707,18 @@ $('#appointments').onclick = async e => {
         if (observacoes === null) return;
 
         try {
-            await api(`/consultas/${c.id_consulta}`, {
-                method: 'PUT',
-                body: JSON.stringify({
-                    id_paciente: Number(id_paciente),
-                    id_profissional: Number(id_profissional),
-                    data_consulta,
-                    horario_consulta,
-                    status: statusValue,
-                    observacoes
-                })
-            });
+            await banco.salvarConsulta({
+                id_paciente,
+                id_profissional,
+                data_consulta,
+                horario_consulta,
+                status: statusValue.toLowerCase(),
+                observacoes
+            }, c.id_consulta);
 
             toast('Consulta atualizada.');
 
-            await Promise.all([
-                loadAppointments(),
-                loadPending(),
-                dashboard()
-            ]);
+            await dashboard();
 
         } catch (x) {
             toast(x.message, true);
@@ -895,17 +727,11 @@ $('#appointments').onclick = async e => {
 
     if (del && confirm('Deseja realmente excluir esta consulta?')) {
         try {
-            await api(`/consultas/${del.dataset.deleteAppointment}`, {
-                method: 'DELETE'
-            });
+            await banco.excluir('consultas', Number(del.dataset.deleteAppointment));
 
             toast('Consulta excluída.');
 
-            await Promise.all([
-                loadAppointments(),
-                loadPending(),
-                dashboard()
-            ]);
+            await dashboard();
 
         } catch (x) {
             toast(x.message, true);
@@ -924,7 +750,4 @@ $('#today').textContent = new Date().toLocaleDateString('pt-BR', {
     year: 'numeric'
 });
 
-dashboard().catch(e => {
-    $('#apiText').textContent = 'API indisponível';
-    toast(e.message, true);
-});
+dashboard();

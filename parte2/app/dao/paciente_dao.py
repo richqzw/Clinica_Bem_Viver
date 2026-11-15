@@ -43,7 +43,7 @@ class PacienteDAO:
                     id_paciente,
                     nome,
                     cpf,
-                    data_nascimento,
+                    CAST(data_nascimento AS CHAR) AS data_nascimento,
                     email,
                     telefone
                 FROM paciente
