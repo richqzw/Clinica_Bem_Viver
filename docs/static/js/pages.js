@@ -4,80 +4,21 @@ const banco = (() => {
     const ordem = new Intl.Collator('pt-BR', { sensitivity: 'base' });
     const nomes = (a, b) => ordem.compare(a.nome, b.nome);
 
-    const especialidades = [
-        { id_especialidades: 1, nome: 'Clínica Geral', descricao: 'Atendimento médico geral e preventivo' },
-        { id_especialidades: 2, nome: 'Cardiologia', descricao: 'Cuidados relacionados ao coração' },
-        { id_especialidades: 3, nome: 'Dermatologia', descricao: 'Cuidados com a pele' },
-        { id_especialidades: 4, nome: 'Fisioterapia', descricao: 'Reabilitação e prevenção de alterações do movimento' },
-        { id_especialidades: 5, nome: 'Pediatria', descricao: 'Atendimento à saúde de crianças e adolescentes' }
-    ];
-
-    const iniciais = {
-        profissionais: [
-            {
-                id_profissional: 1,
-                nome: 'Marina Exemplo',
-                crm: 'DEMO-001',
-                email: 'marina@example.test',
-                telefone: '(00) 00000-0001',
-                id_especialidades: 1,
-                minicurriculo: ''
-            },
-            {
-                id_profissional: 2,
-                nome: 'Paulo Exemplo',
-                crm: 'DEMO-002',
-                email: 'paulo@example.test',
-                telefone: '(00) 00000-0002',
-                id_especialidades: 2,
-                minicurriculo: ''
-            }
-        ],
-        pacientes: [
-            {
-                id_paciente: 1,
-                nome: 'Ana Demonstração',
-                cpf: '00000000001',
-                data_nascimento: '1992-06-15',
-                email: 'ana@example.test',
-                telefone: '(00) 00000-0003'
-            },
-            {
-                id_paciente: 2,
-                nome: 'Lucas Demonstração',
-                cpf: '00000000002',
-                data_nascimento: '2001-09-21',
-                email: 'lucas@example.test',
-                telefone: '(00) 00000-0004'
-            }
-        ],
-        consultas: [
-            {
-                id_consulta: 1,
-                id_paciente: 1,
-                id_profissional: 1,
-                status: 'pendente',
-                data_consulta: null,
-                horario_consulta: null,
-                observacoes: 'Pedido de exemplo para testar o agendamento.'
-            }
-        ],
-        proximosIds: { profissionais: 3, pacientes: 3, consultas: 2 }
-    };
-
     const entidades = {
+        especialidades: { id: 'id_especialidades', erro: 'Especialidade não encontrada.' },
         profissionais: { id: 'id_profissional', erro: 'Médico não encontrado.' },
         pacientes: { id: 'id_paciente', erro: 'Paciente não encontrado.' },
         consultas: { id: 'id_consulta', erro: 'Consulta não encontrada.' }
     };
 
     let conexao;
+    let preparacao;
 
     function abrir() {
         conexao ??= new Promise((resolve, reject) => {
             const pedido = indexedDB.open(bancoNome, 1);
             pedido.onupgradeneeded = () => {
-                pedido.result.createObjectStore('dados').add(iniciais, chave);
+                pedido.result.createObjectStore('dados');
             };
             pedido.onsuccess = () => resolve(pedido.result);
             pedido.onerror = () => reject(new Error('O navegador não conseguiu abrir os dados.'));
@@ -101,7 +42,7 @@ const banco = (() => {
                     const dados = leitura.result;
                     resultado = operacao(dados);
                     if (modo === 'readwrite') {
-                        loja.put(dados, chave);
+                        loja.put(dados ?? resultado, chave);
                     }
                 } catch (erro) {
                     transacao.abort();
@@ -109,6 +50,40 @@ const banco = (() => {
                 }
             };
         });
+    }
+
+    async function preparar() {
+        const preparados = await acessar('readonly', dados => dados?.proximosIds?.especialidades);
+        if (preparados) return;
+
+        let exemplos;
+        try {
+            const resposta = await fetch('./docs/dados/clinica.json');
+            if (!resposta.ok) throw new Error();
+            exemplos = await resposta.json();
+        } catch {
+            throw new Error('Não foi possível carregar os exemplos da clínica. Abra pelo GitHub Pages ou pelo Flask.');
+        }
+
+        await acessar('readwrite', dados => {
+            const registros = dados ?? exemplos;
+            registros.especialidades ??= exemplos.especialidades;
+            registros.proximosIds ??= {};
+            for (const [tipo, { id }] of Object.entries(entidades)) {
+                registros.proximosIds[tipo] ??=
+                    registros[tipo].reduce((maior, item) => Math.max(maior, item[id]), 0) + 1;
+            }
+            return registros;
+        });
+    }
+
+    async function usar(modo, operacao) {
+        preparacao ??= preparar().catch(erro => {
+            preparacao = undefined;
+            throw erro;
+        });
+        await preparacao;
+        return acessar(modo, operacao);
     }
 
     function buscar(dados, tipo, id) {
@@ -149,8 +124,21 @@ const banco = (() => {
         return /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(horario);
     }
 
+    function salvarEspecialidade(campos, id) {
+        return usar('readwrite', dados => {
+            const registro = {
+                nome: texto(campos.nome, 'nome', 100),
+                descricao: texto(campos.descricao, 'descrição', 255, false)
+            };
+            if (dados.especialidades.some(e => e.id_especialidades !== id && ordem.compare(e.nome, registro.nome) === 0)) {
+                throw new Error('Especialidade já cadastrada.');
+            }
+            salvar(dados, 'especialidades', id, registro);
+        });
+    }
+
     function salvarMedico(campos, id) {
-        return acessar('readwrite', dados => {
+        return usar('readwrite', dados => {
             const medico = {
                 nome: texto(campos.nome, 'nome', 150),
                 crm: texto(campos.crm, 'CRM', 30),
@@ -160,7 +148,7 @@ const banco = (() => {
                 id_especialidades: Number(campos.id_especialidades)
             };
 
-            if (!especialidades.some(e => e.id_especialidades === medico.id_especialidades)) {
+            if (!dados.especialidades.some(e => e.id_especialidades === medico.id_especialidades)) {
                 throw new Error('Selecione uma especialidade válida.');
             }
             if (dados.profissionais.some(p =>
@@ -174,7 +162,7 @@ const banco = (() => {
     }
 
     function salvarPaciente(campos, id) {
-        return acessar('readwrite', dados => {
+        return usar('readwrite', dados => {
             const paciente = {
                 nome: texto(campos.nome, 'nome', 150),
                 cpf: (campos.cpf ?? '').replace(/[.\s-]/g, ''),
@@ -200,8 +188,20 @@ const banco = (() => {
         }
     }
 
+    function validarConflito(dados, consulta, id) {
+        const minuto = consulta.horario_consulta.slice(0, 5);
+        const ocupado = dados.consultas.some(c =>
+            c.id_consulta !== id &&
+            c.status === 'agendada' &&
+            c.data_consulta === consulta.data_consulta &&
+            c.horario_consulta?.slice(0, 5) === minuto &&
+            (c.id_profissional === consulta.id_profissional || c.id_paciente === consulta.id_paciente)
+        );
+        if (ocupado) throw new Error('O médico ou paciente já tem consulta agendada nesse horário.');
+    }
+
     function salvarConsulta(campos, id) {
-        return acessar('readwrite', dados => {
+        return usar('readwrite', dados => {
             const consulta = {
                 id_paciente: Number(campos.id_paciente),
                 id_profissional: Number(campos.id_profissional),
@@ -221,15 +221,17 @@ const banco = (() => {
                 validarAgenda(consulta.data_consulta, consulta.horario_consulta);
             }
 
+            if (consulta.status === 'agendada') validarConflito(dados, consulta, id);
             salvar(dados, 'consultas', id, consulta);
         });
     }
 
     function agendar(id, data, horario) {
-        return acessar('readwrite', dados => {
+        return usar('readwrite', dados => {
             const consulta = buscar(dados, 'consultas', id);
             if (consulta.status !== 'pendente') throw new Error('O pedido já saiu da fila de pendentes.');
             validarAgenda(data, horario);
+            validarConflito(dados, { ...consulta, data_consulta: data, horario_consulta: horario }, id);
             Object.assign(consulta, {
                 data_consulta: data,
                 horario_consulta: horario,
@@ -239,9 +241,13 @@ const banco = (() => {
     }
 
     function excluir(tipo, id) {
-        return acessar('readwrite', dados => {
+        return usar('readwrite', dados => {
             const registro = buscar(dados, tipo, id);
-            if (tipo !== 'consultas' && dados.consultas.some(c => c[entidades[tipo].id] === id)) {
+            if (tipo === 'especialidades' && dados.profissionais.some(p => p.id_especialidades === id)) {
+                throw new Error('Alterar ou excluir os médicos vinculados libera esta especialidade.');
+            }
+            if ((tipo === 'profissionais' || tipo === 'pacientes') &&
+                dados.consultas.some(c => c[entidades[tipo].id] === id)) {
                 throw new Error('Exclua as consultas vinculadas antes de remover o cadastro.');
             }
             dados[tipo].splice(dados[tipo].indexOf(registro), 1);
@@ -249,8 +255,8 @@ const banco = (() => {
     }
 
     function listar() {
-        return acessar('readonly', dados => {
-            const especialidadesPorId = new Map(especialidades.map(e => [e.id_especialidades, e.nome]));
+        return usar('readonly', dados => {
+            const especialidadesPorId = new Map(dados.especialidades.map(e => [e.id_especialidades, e.nome]));
             const doctors = dados.profissionais.map(p => ({
                 ...p,
                 especialidade: especialidadesPorId.get(p.id_especialidades)
@@ -276,10 +282,10 @@ const banco = (() => {
                 patients,
                 appointments,
                 pending: appointments.filter(c => c.status === 'pendente'),
-                specialties: [...especialidades].sort(nomes)
+                specialties: [...dados.especialidades].sort(nomes)
             };
         });
     }
 
-    return { listar, salvarMedico, salvarPaciente, salvarConsulta, agendar, excluir };
+    return { listar, salvarEspecialidade, salvarMedico, salvarPaciente, salvarConsulta, agendar, excluir };
 })();

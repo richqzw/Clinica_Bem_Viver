@@ -890,105 +890,28 @@ footer {
     margin-top: 0;
 }
 
-/* BOTÕES DE AÇÃO */
-.actions {
+/* Edição */
+#editor {
+    width: min(470px, calc(100% - 32px));
+    max-height: calc(100% - 40px);
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    color: inherit;
+}
+
+#editor::backdrop {
+    background: rgb(24 59 52 / .55);
+}
+
+#editorTitle,
+#editorMsg {
+    margin: 0;
+}
+
+.editor-actions {
     display: flex;
     flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 8px;
-    margin-top: 12px;
-}
-
-.actions button {
-    border: none;
-    border-radius: 7px;
-    padding: 8px 13px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    transition: .2s;
-}
-
-.action-edit {
-    background: #e5f0e8;
-    color: #155b55;
-}
-
-.action-edit:hover {
-    background: #cde3d4;
-}
-
-.action-delete {
-    background: #fde8e7;
-    color: #b42318;
-}
-
-.action-delete:hover {
-    background: #fbd1ce;
-}
-
-/* CONTEÚDO DOS MÉDICOS */
-.doctor-content {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    min-width: 0;
-}
-
-/* CONFIRMAÇÃO DE CONSULTA */
-.confirmation-box {
-    margin-top: 12px;
-    padding: 12px 15px;
-    border-radius: 8px;
-    background: #e5f0e8;
-    color: #155b55;
-    font-weight: 600;
-    font-size: 14px;
-}
-
-.confirmation-box:empty {
-    display: none;
-}
-
-/* MENSAGENS DE ERRO */
-.msg.error {
-    color: #b42318;
-}
-
-/* TABELAS */
-#appointments,
-#patients {
-    width: 100%;
-    overflow-x: auto;
-}
-
-#appointments table,
-#patients table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-#appointments th,
-#appointments td,
-#patients th,
-#patients td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid var(--line);
-}
-
-#appointments th,
-#patients th {
-    color: var(--muted);
-    font-size: 11px;
-    letter-spacing: .5px;
-}
-
-#appointments td,
-#patients td {
-    font-size: 13px;
-}
-
-#appointments .actions,
-#patients .actions {
-    margin-top: 0;
 }

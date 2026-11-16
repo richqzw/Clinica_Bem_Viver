@@ -1,3 +1,6 @@
+const modoFlask = document.documentElement.dataset.origem === 'flask';
+const dadosClinica = modoFlask ? apiClinica : banco;
+
 
 let S = {
     doctors: [],
@@ -70,12 +73,6 @@ function dataHoje() {
     return new Date(horaLocal).toISOString().slice(0, 10);
 }
 
-function ask(label, current = '') {
-    const v = prompt(label, current ?? '');
-    return v === null ? null : v.trim();
-}
-
-
 // =========================
 // ESPECIALIDADES
 // =========================
@@ -92,6 +89,10 @@ function renderSpecialties() {
             <div class="symbol">${['✳', '♡', '✦', '⌁', '♧', '◇'][i % 6]}</div>
             <h3>${esc(s.nome)}</h3>
             <p>${esc(s.descricao || 'Especialidade disponível na clínica.')}</p>
+            <div class="actions">
+                <button type="button" class="action-edit" data-editar="especialidades" data-id="${s.id_especialidades}">Editar</button>
+                <button type="button" class="action-delete" data-excluir="especialidades" data-id="${s.id_especialidades}">Excluir</button>
+            </div>
         </article>
     `).join('') || '<div class="panel empty">Sem especialidades cadastradas.</div>';
 
@@ -139,12 +140,12 @@ function renderDoctors() {
 
                 <div class="actions">
                     <button class="action-edit"
-                        data-edit-doctor="${d.id_profissional}">
+                        type="button" data-editar="profissionais" data-id="${d.id_profissional}">
                         Editar
                     </button>
 
                     <button class="action-delete"
-                        data-delete-doctor="${d.id_profissional}">
+                        type="button" data-excluir="profissionais" data-id="${d.id_profissional}">
                         Excluir
                     </button>
                 </div>
@@ -192,12 +193,12 @@ function renderPatients() {
                             <td>
                                 <div class="actions">
                                     <button class="action-edit"
-                                        data-edit-patient="${p.id_paciente}">
+                                        type="button" data-editar="pacientes" data-id="${p.id_paciente}">
                                         Editar
                                     </button>
 
                                     <button class="action-delete"
-                                        data-delete-patient="${p.id_paciente}">
+                                        type="button" data-excluir="pacientes" data-id="${p.id_paciente}">
                                         Excluir
                                     </button>
                                 </div>
@@ -327,12 +328,12 @@ function renderAppointments() {
                             <td>
                                 <div class="actions">
                                     <button class="action-edit"
-                                        data-edit-appointment="${c.id_consulta}">
+                                        type="button" data-editar="consultas" data-id="${c.id_consulta}">
                                         Editar
                                     </button>
 
                                     <button class="action-delete"
-                                        data-delete-appointment="${c.id_consulta}">
+                                        type="button" data-excluir="consultas" data-id="${c.id_consulta}">
                                         Excluir
                                     </button>
                                 </div>
@@ -374,7 +375,7 @@ function renderRecent() {
 
 async function dashboard() {
     try {
-        S = await banco.listar();
+        S = await dadosClinica.listar();
         const selecoes = $$('.form select').map(select => [select, select.value]);
 
         renderDoctors();
@@ -390,7 +391,7 @@ async function dashboard() {
         }
         mostrarEspecialidade();
 
-        $('#dataStatus').textContent = 'Demonstração';
+        $('#dataStatus').textContent = modoFlask ? 'Banco conectado' : 'Demonstração';
         $('.data-state').classList.add('online');
     } catch (erro) {
         $('#dataStatus').textContent = 'Dados indisponíveis';
@@ -409,14 +410,18 @@ function go(id) {
         p.classList.toggle('show', p.id === id)
     );
 
-    $$('.nav').forEach(b =>
-        b.classList.toggle('active', b.dataset.page === id)
-    );
+    $$('.nav').forEach(b => {
+        const ativo = b.dataset.page === id;
+        b.classList.toggle('active', ativo);
+        if (ativo) b.setAttribute('aria-current', 'page');
+        else b.removeAttribute('aria-current');
+    });
 
     $('#crumb').textContent =
         $(`.nav[data-page="${id}"]`)?.textContent.trim() || id;
 
     $('#sidebar').classList.remove('open');
+    $('#menu').setAttribute('aria-expanded', 'false');
 }
 
 $$('[data-page]').forEach(b => {
@@ -428,7 +433,8 @@ $$('[data-go]').forEach(b => {
 });
 
 $('#menu').onclick = () => {
-    $('#sidebar').classList.toggle('open');
+    const aberto = $('#sidebar').classList.toggle('open');
+    $('#menu').setAttribute('aria-expanded', String(aberto));
 };
 
 
@@ -462,12 +468,13 @@ function cadastro(seletor, mensagemId, salvar, sucesso) {
     };
 }
 
-cadastro('#doctorForm', 'doctorMsg', banco.salvarMedico, 'Médico cadastrado com sucesso.');
-cadastro('#patientForm', 'patientMsg', banco.salvarPaciente, 'Paciente cadastrado com sucesso.');
+cadastro('#specialtyForm', 'specialtyMsg', dadosClinica.salvarEspecialidade, 'Especialidade cadastrada com sucesso.');
+cadastro('#doctorForm', 'doctorMsg', dadosClinica.salvarMedico, 'Médico cadastrado com sucesso.');
+cadastro('#patientForm', 'patientMsg', dadosClinica.salvarPaciente, 'Paciente cadastrado com sucesso.');
 cadastro(
     '#appointmentForm',
     'appointmentMsg',
-    banco.salvarConsulta,
+    dadosClinica.salvarConsulta,
     'Consulta registrada. O pedido está aguardando agendamento.'
 );
 
@@ -496,7 +503,7 @@ $('#pending').onsubmit = async evento => {
     const campos = values(formulario);
 
     try {
-        await banco.agendar(Number(formulario.dataset.id), campos.data_consulta, campos.horario_consulta);
+        await dadosClinica.agendar(Number(formulario.dataset.id), campos.data_consulta, campos.horario_consulta);
         toast('Consulta agendada com sucesso.');
         await dashboard();
     } catch (erro) {
@@ -509,240 +516,128 @@ $('#pending').onsubmit = async evento => {
 $('#refresh').onclick = dashboard;
 
 
-// =========================
-// EDITAR E EXCLUIR MÉDICOS
-// =========================
-
-$('#doctors').onclick = async e => {
-    const edit = e.target.closest('[data-edit-doctor]');
-    const del = e.target.closest('[data-delete-doctor]');
-
-    if (edit) {
-        const d = S.doctors.find(x =>
-            x.id_profissional === Number(edit.dataset.editDoctor)
-        );
-
-        if (!d) return;
-
-        const nome = ask('Nome do médico:', d.nome);
-        if (nome === null) return;
-
-        const crm = ask('CRM:', d.crm);
-        if (crm === null) return;
-
-        const email = ask('E-mail:', d.email);
-        if (email === null) return;
-
-        const telefone = ask('Telefone:', d.telefone);
-        if (telefone === null) return;
-
-        const minicurriculo = ask(
-            'Minicurrículo:',
-            d.minicurriculo || ''
-        );
-
-        if (minicurriculo === null) return;
-
-        const opcoes = S.specialties
-            .map(s => `${s.id_especialidades} - ${s.nome}`)
-            .join('\n');
-
-        const especialidade = ask(
-            `Digite o ID da especialidade:\n${opcoes}`,
-            d.id_especialidades
-        );
-
-        if (especialidade === null) return;
-
-        try {
-            await banco.salvarMedico({
-                nome, crm, email, telefone, minicurriculo,
-                id_especialidades: especialidade
-            }, d.id_profissional);
-
-            toast('Médico atualizado.');
-            await dashboard();
-
-        } catch (x) {
-            toast(x.message, true);
-        }
-    }
-
-    if (del && confirm('Deseja realmente excluir este médico?')) {
-        try {
-            await banco.excluir('profissionais', Number(del.dataset.deleteDoctor));
-
-            toast('Médico excluído.');
-            await dashboard();
-
-        } catch (x) {
-            toast(x.message, true);
-        }
+const edicao = {
+    especialidades: {
+        lista: 'specialties',
+        chave: 'id_especialidades',
+        formulario: '#specialtyForm',
+        salvar: dadosClinica.salvarEspecialidade,
+        titulo: 'Editar especialidade',
+        atualizacao: 'Especialidade atualizada.',
+        exclusao: 'Especialidade excluída.',
+        confirmar: 'Deseja excluir esta especialidade?'
+    },
+    profissionais: {
+        lista: 'doctors',
+        chave: 'id_profissional',
+        formulario: '#doctorForm',
+        salvar: dadosClinica.salvarMedico,
+        titulo: 'Editar médico',
+        atualizacao: 'Médico atualizado.',
+        exclusao: 'Médico excluído.',
+        confirmar: 'Deseja excluir este médico?'
+    },
+    pacientes: {
+        lista: 'patients',
+        chave: 'id_paciente',
+        formulario: '#patientForm',
+        salvar: dadosClinica.salvarPaciente,
+        titulo: 'Editar paciente',
+        atualizacao: 'Paciente atualizado.',
+        exclusao: 'Paciente excluído.',
+        confirmar: 'Deseja excluir este paciente?'
+    },
+    consultas: {
+        lista: 'appointments',
+        chave: 'id_consulta',
+        formulario: '#appointmentForm',
+        salvar: dadosClinica.salvarConsulta,
+        titulo: 'Editar consulta',
+        atualizacao: 'Consulta atualizada.',
+        exclusao: 'Consulta excluída.',
+        confirmar: 'Deseja excluir esta consulta?'
     }
 };
 
+const dialogo = $('#editor');
+const formularioEdicao = $('#editorForm');
+const salvarEdicao = $('#editorSave');
+const cancelarEdicao = $('#editorCancel');
 
-// =========================
-// EDITAR E EXCLUIR PACIENTES
-// =========================
-
-$('#patients').onclick = async e => {
-    const edit = e.target.closest('[data-edit-patient]');
-    const del = e.target.closest('[data-delete-patient]');
-
-    if (edit) {
-        const p = S.patients.find(x =>
-            x.id_paciente === Number(edit.dataset.editPatient)
-        );
-
-        if (!p) return;
-
-        const nome = ask('Nome completo:', p.nome);
-        if (nome === null) return;
-
-        const cpf = ask('CPF (somente números):', p.cpf);
-        if (cpf === null) return;
-
-        const data_nascimento = ask(
-            'Data de nascimento (AAAA-MM-DD):',
-            p.data_nascimento
-        );
-
-        if (data_nascimento === null) return;
-
-        const email = ask('E-mail:', p.email);
-        if (email === null) return;
-
-        const telefone = ask('Telefone:', p.telefone);
-        if (telefone === null) return;
-
-        try {
-            await banco.salvarPaciente({ nome, cpf, data_nascimento, email, telefone }, p.id_paciente);
-
-            toast('Paciente atualizado.');
-            await dashboard();
-
-        } catch (x) {
-            toast(x.message, true);
-        }
-    }
-
-    if (del && confirm('Deseja realmente excluir este paciente?')) {
-        try {
-            await banco.excluir('pacientes', Number(del.dataset.deletePatient));
-
-            toast('Paciente excluído.');
-            await dashboard();
-
-        } catch (x) {
-            toast(x.message, true);
-        }
-    }
+cancelarEdicao.onclick = () => dialogo.close();
+dialogo.oncancel = evento => {
+    if (salvarEdicao.disabled) evento.preventDefault();
 };
 
+function abrirEditor(tipo, config, registro) {
+    const campos = $('#editorFields');
+    const rotulos = [...$(config.formulario).querySelectorAll('label')];
+    campos.replaceChildren(
+        ...rotulos.filter(rotulo => rotulo.querySelector('[name]')).map(rotulo => rotulo.cloneNode(true))
+    );
+    if (tipo === 'consultas') {
+        campos.append($('#agendaFields').content.cloneNode(true));
+    }
+    for (const campo of campos.querySelectorAll('[name]')) {
+        campo.removeAttribute('id');
+        campo.value = registro[campo.name] ?? '';
+    }
+    $('#editorTitle').textContent = config.titulo;
+    $('#editorMsg').hidden = true;
+    feedback('editorMsg', '');
 
-// =========================
-// EDITAR E EXCLUIR CONSULTAS
-// =========================
+    formularioEdicao.onsubmit = async evento => {
+        evento.preventDefault();
+        if (salvarEdicao.disabled) return;
 
-$('#appointments').onclick = async e => {
-    const edit = e.target.closest('[data-edit-appointment]');
-    const del = e.target.closest('[data-delete-appointment]');
-
-    if (edit) {
-        const c = S.appointments.find(x =>
-            x.id_consulta === Number(edit.dataset.editAppointment)
-        );
-
-        if (!c) return;
-
-        const patientOptions = S.patients
-            .map(p => `${p.id_paciente} - ${p.nome}`)
-            .join('\n');
-
-        const doctorOptions = S.doctors
-            .map(d => `${d.id_profissional} - ${d.nome}`)
-            .join('\n');
-
-        const id_paciente = ask(
-            `ID do paciente:\n${patientOptions}`,
-            c.id_paciente
-        );
-
-        if (id_paciente === null) return;
-
-        const id_profissional = ask(
-            `ID do médico:\n${doctorOptions}`,
-            c.id_profissional
-        );
-
-        if (id_profissional === null) return;
-
-        const data_consulta = ask(
-            'Data (AAAA-MM-DD, deixe vazio se pendente):',
-            c.data_consulta || ''
-        );
-
-        if (data_consulta === null) return;
-
-        const horario_consulta = ask(
-            'Horário (HH:MM, deixe vazio se pendente):',
-            c.horario_consulta || ''
-        );
-
-        if (horario_consulta === null) return;
-
-        const statusValue = ask(
-            'Status: pendente, agendada, cancelada ou concluida:',
-            c.status
-        );
-
-        if (statusValue === null) return;
-
-        const observacoes = ask(
-            'Observações:',
-            c.observacoes || ''
-        );
-
-        if (observacoes === null) return;
-
+        salvarEdicao.disabled = cancelarEdicao.disabled = true;
+        $('#editorMsg').hidden = false;
+        feedback('editorMsg', 'Salvando…');
         try {
-            await banco.salvarConsulta({
-                id_paciente,
-                id_profissional,
-                data_consulta,
-                horario_consulta,
-                status: statusValue.toLowerCase(),
-                observacoes
-            }, c.id_consulta);
-
-            toast('Consulta atualizada.');
-
+            await config.salvar(values(formularioEdicao), registro[config.chave]);
+            dialogo.close();
+            toast(config.atualizacao);
             await dashboard();
-
-        } catch (x) {
-            toast(x.message, true);
+        } catch (erro) {
+            feedback('editorMsg', erro.message, true);
+        } finally {
+            salvarEdicao.disabled = cancelarEdicao.disabled = false;
         }
+    };
+
+    dialogo.showModal();
+}
+
+$('main').addEventListener('click', async evento => {
+    const botao = evento.target.closest('button[data-editar], button[data-excluir]');
+    if (!botao || botao.disabled) return;
+
+    const tipo = botao.dataset.editar ?? botao.dataset.excluir;
+    const config = edicao[tipo];
+    const ident = Number(botao.dataset.id);
+    if (botao.dataset.editar) {
+        const registro = S[config.lista].find(item => item[config.chave] === ident);
+        if (registro) abrirEditor(tipo, config, registro);
+        return;
     }
 
-    if (del && confirm('Deseja realmente excluir esta consulta?')) {
-        try {
-            await banco.excluir('consultas', Number(del.dataset.deleteAppointment));
-
-            toast('Consulta excluída.');
-
-            await dashboard();
-
-        } catch (x) {
-            toast(x.message, true);
-        }
+    if (!confirm(config.confirmar)) return;
+    botao.disabled = true;
+    try {
+        await dadosClinica.excluir(tipo, ident);
+        toast(config.exclusao);
+        await dashboard();
+    } catch (erro) {
+        toast(erro.message, true);
+    } finally {
+        botao.disabled = false;
     }
-};
+});
 
 
-// =========================
-// DATA E INICIALIZAÇÃO
-// =========================
+if (modoFlask) {
+    $('#dataNote').textContent = 'Modo de apresentação. Use dados fictícios. Os cadastros duram enquanto o servidor estiver aberto.';
+}
 
 $('#today').textContent = new Date().toLocaleDateString('pt-BR', {
     day: '2-digit',
