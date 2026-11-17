@@ -1,0 +1,445 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR" data-origem="navegador">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Clínica Bem Viver</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="./static/css/estilo.css">
+</head>
+
+<body>
+
+    <aside class="sidebar" id="sidebar">
+
+        <a class="brand" href="#">
+            <span class="logo">BV</span>
+            <span class="brand-name">
+                <span>Bem</span>
+                <span class="light">Viver</span>
+            </span>
+        </a>
+
+        <p class="label">MENU PRINCIPAL</p>
+
+        <nav>
+            <button class="nav active" aria-current="page" data-page="inicio">◫　Visão geral</button>
+            <button class="nav" data-page="medicos">⚕　Médicos</button>
+            <button class="nav" data-page="pacientes">♙　Pacientes</button>
+            <button class="nav" data-page="consultas">▦　Solicitar consulta</button>
+            <button class="nav" data-page="pendentes">◷　Pedidos pendentes</button>
+            <button class="nav" data-page="especialidades">✳　Especialidades</button>
+        </nav>
+
+        <div class="aside-bottom">
+            <b>Cuidar é estar perto.</b>
+            <p>Gestão simples para uma clínica que cuida de pessoas.</p>
+            <small>BEM VIVER · SISTEMA 1.0</small>
+        </div>
+
+    </aside>
+
+    <main>
+
+        <header>
+            <button id="menu" class="menu" type="button" aria-label="Menu" aria-controls="sidebar" aria-expanded="false">☰</button>
+
+            <div class="crumb">
+                Clínica　/　<b id="crumb">Visão geral</b>
+            </div>
+
+            <div class="data-state">
+                <i id="dot"></i>
+                <span id="dataStatus" aria-live="polite">Carregando…</span>
+                <b class="avatar">BV</b>
+
+                <span class="user">
+                    Bem Viver
+                    <small>Administração</small>
+                </span>
+            </div>
+        </header>
+
+        <p class="note" id="dataNote">Use dados fictícios. Os cadastros ficam salvos neste navegador.</p>
+
+        <!-- VISÃO GERAL -->
+
+        <section id="inicio" class="page show">
+
+            <div class="heading">
+                <div>
+                    <small class="eyebrow">GESTÃO DA CLÍNICA</small>
+                    <h1>Um dia melhor começa com cuidado.</h1>
+                    <p>Acompanhe os atendimentos e a equipe da Clínica Bem Viver.</p>
+                </div>
+
+                <span class="date" id="today"></span>
+            </div>
+
+            <div class="stats">
+
+                <article>
+                    <span>Médicos cadastrados</span>
+                    <b id="nMed">—</b>
+                    <small>Profissionais da clínica</small>
+                </article>
+
+                <article>
+                    <span>Pacientes cadastrados</span>
+                    <b id="nPac">—</b>
+                    <small>Cadastros realizados</small>
+                </article>
+
+                <article>
+                    <span>Pedidos pendentes</span>
+                    <b id="nPen">—</b>
+                    <small>Aguardando agendamento</small>
+                </article>
+
+                <article>
+                    <span>Consultas agendadas</span>
+                    <b id="nAge">—</b>
+                    <small>Atendimentos confirmados</small>
+                </article>
+
+            </div>
+
+            <div class="columns">
+
+                <article class="panel">
+
+                    <div class="panel-title">
+                        <div>
+                            <small class="eyebrow">ACOMPANHAMENTO</small>
+                            <h2>Pedidos recentes</h2>
+                        </div>
+
+                        <button class="link" data-go="pendentes">Ver todos ↗</button>
+                    </div>
+
+                    <div id="recent"></div>
+
+                </article>
+
+                <article class="panel">
+
+                    <div class="panel-title">
+                        <div>
+                            <small class="eyebrow">ÁREAS DE CUIDADO</small>
+                            <h2>Especialidades</h2>
+                        </div>
+
+                        <button class="link" data-go="especialidades">Ver todas ↗</button>
+                    </div>
+
+                    <div id="summary"></div>
+
+                </article>
+
+            </div>
+
+            <div class="note">
+                ✦　<b>Bem-estar em cada etapa.</b>　Cadastre profissionais e pacientes para começar.
+            </div>
+
+        </section>
+
+        <!-- MÉDICOS -->
+
+        <section id="medicos" class="page">
+
+            <div class="heading">
+                <div>
+                    <small class="eyebrow">CORPO CLÍNICO</small>
+                    <h1>Médicos</h1>
+                    <p>Cadastre profissionais e consulte suas especialidades.</p>
+                </div>
+            </div>
+
+            <div class="columns">
+
+                <article class="panel">
+
+                    <h2>Cadastrar médico</h2>
+                    <p class="sub">Preencha os dados do profissional.</p>
+
+                    <form id="doctorForm" class="form" autocomplete="off">
+
+                        <label>
+                            Nome completo
+                            <input name="nome" maxlength="150" required>
+                        </label>
+
+                        <label>
+                            CRM
+                            <input name="crm" maxlength="30" required>
+                        </label>
+
+                        <label>
+                            E-mail
+                            <input name="email" type="email" maxlength="150" required>
+                        </label>
+
+                        <label>
+                            Telefone
+                            <input name="telefone" type="tel" maxlength="20" required>
+                        </label>
+
+                        <label>
+                            Especialidade
+                            <select name="id_especialidades" id="specialtySelect" required></select>
+                        </label>
+
+                        <label>
+                            Minicurrículo <small>opcional</small>
+                            <textarea name="minicurriculo" rows="3" maxlength="500"></textarea>
+                        </label>
+
+                        <button type="submit" class="primary">Salvar médico</button>
+
+                        <span id="doctorMsg" class="msg"></span>
+
+                    </form>
+
+                </article>
+
+                <article class="panel">
+
+                    <div class="panel-title">
+                        <h2>Profissionais disponíveis</h2>
+                        <span class="pill" id="doctorCount">0</span>
+                    </div>
+
+                    <div id="doctors"></div>
+
+                </article>
+
+            </div>
+
+        </section>
+
+        <!-- PACIENTES -->
+
+        <section id="pacientes" class="page">
+
+            <div class="heading">
+                <div>
+                    <small class="eyebrow">ACOLHIMENTO</small>
+                    <h1>Pacientes</h1>
+                    <p>Cadastre e consulte os pacientes da clínica.</p>
+                </div>
+            </div>
+
+            <div class="columns">
+
+                <article class="panel">
+
+                    <h2>Novo paciente</h2>
+                    <p class="sub">Dados para identificação e contato.</p>
+
+                    <form id="patientForm" class="form" autocomplete="off">
+
+                        <label>
+                            Nome completo
+                            <input name="nome" maxlength="150" required>
+                        </label>
+
+                        <label>
+                            CPF
+                            <input name="cpf" inputmode="numeric" required maxlength="14" pattern="[0-9]{11}|[0-9]{3}\.[0-9]{3}\.[0-9]{3}-[0-9]{2}" title="Informe 11 números" placeholder="000.000.000-00">
+                        </label>
+
+                        <label>
+                            Data de nascimento
+                            <input name="data_nascimento" type="date" required>
+                        </label>
+
+                        <label>
+                            E-mail
+                            <input name="email" type="email" maxlength="150" required>
+                        </label>
+
+                        <label>
+                            Telefone
+                            <input name="telefone" type="tel" maxlength="20" required>
+                        </label>
+
+                        <button type="submit" class="primary">Cadastrar paciente</button>
+
+                        <span id="patientMsg" class="msg"></span>
+
+                    </form>
+
+                </article>
+
+                <article class="panel">
+
+                    <div class="panel-title">
+                        <h2>Pacientes cadastrados</h2>
+                        <span class="pill" id="patientCount">0</span>
+                    </div>
+
+                    <div id="patients" class="tablebox"></div>
+
+                </article>
+
+            </div>
+
+        </section>
+
+        <!-- CONSULTAS -->
+
+        <section id="consultas" class="page">
+
+            <div class="heading">
+                <div>
+                    <small class="eyebrow">AGENDAMENTO</small>
+                    <h1>Solicitar consulta</h1>
+                    <p>Registre um pedido escolhendo paciente e médico.</p>
+                </div>
+            </div>
+
+            <article class="panel narrow">
+
+                <div class="panel-title">
+
+                    <div>
+                        <h2>Novo pedido de consulta</h2>
+                        <p class="sub">O pedido será criado com status pendente.</p>
+                    </div>
+
+                    <span class="status pendente">Pendente</span>
+
+                </div>
+
+                <form id="appointmentForm" class="form" autocomplete="off">
+
+                    <label>
+                        Paciente
+                        <select name="id_paciente" id="patientSelect" required></select>
+                    </label>
+
+                    <label>
+                        Médico
+                        <select name="id_profissional" id="doctorSelect" required></select>
+                    </label>
+
+                    <label>
+                        Especialidade
+                        <input id="chosenSpecialty" readonly>
+                    </label>
+
+                    <label>
+                        Observações <small>opcional</small>
+                        <textarea name="observacoes" rows="3" maxlength="500"></textarea>
+                    </label>
+
+                    <button type="submit" class="primary">Enviar solicitação</button>
+
+                    <span id="appointmentMsg" class="msg confirmation-box"></span>
+
+                </form>
+
+            </article>
+
+            <article class="panel">
+
+                <h2>Consultas registradas</h2>
+
+                <div id="appointments" class="tablebox"></div>
+
+            </article>
+
+        </section>
+
+        <!-- PEDIDOS PENDENTES -->
+
+        <section id="pendentes" class="page">
+
+            <div class="heading">
+                <div>
+                    <small class="eyebrow">CENTRAL DE ATENDIMENTO</small>
+                    <h1>Pedidos pendentes</h1>
+                    <p>Solicitações aguardando confirmação de data e horário.</p>
+                </div>
+
+                <button type="button" class="secondary" id="refresh">↻ Atualizar lista</button>
+
+            </div>
+
+            <div id="pending" class="pending-grid"></div>
+
+        </section>
+
+        <!-- ESPECIALIDADES -->
+
+        <section id="especialidades" class="page">
+
+            <div class="heading">
+                <div>
+                    <small class="eyebrow">ÁREAS DE CUIDADO</small>
+                    <h1>Especialidades</h1>
+                    <p>Especialidades disponíveis para cadastro do corpo clínico.</p>
+                </div>
+            </div>
+
+            <article class="panel narrow">
+                <h2>Cadastrar especialidade</h2>
+                <form id="specialtyForm" class="form" autocomplete="off">
+                    <label>Nome <input name="nome" maxlength="100" required></label>
+                    <label>Descrição <textarea name="descricao" rows="2" maxlength="255"></textarea></label>
+                    <button type="submit" class="primary">Salvar especialidade</button>
+                    <span id="specialtyMsg" class="msg"></span>
+                </form>
+            </article>
+
+            <div id="specialties" class="specialty-grid"></div>
+
+        </section>
+
+        <footer>
+            © 2026 Clínica Bem Viver　·　Cuidado, saúde e acolhimento.
+        </footer>
+
+    </main>
+
+    <!-- MENSAGENS DO SISTEMA -->
+
+    <dialog id="editor" aria-labelledby="editorTitle">
+        <form id="editorForm" class="form" autocomplete="off">
+            <h2 id="editorTitle"></h2>
+            <div id="editorFields" class="form"></div>
+            <p id="editorMsg" class="msg" aria-live="polite" hidden></p>
+            <div class="editor-actions">
+                <button type="button" id="editorCancel" class="secondary">Cancelar</button>
+                <button type="submit" id="editorSave" class="primary">Salvar</button>
+            </div>
+        </form>
+    </dialog>
+
+    <template id="agendaFields">
+        <label>
+            Status
+            <select name="status" required>
+                <option value="pendente">Pendente</option>
+                <option value="agendada">Agendada</option>
+                <option value="cancelada">Cancelada</option>
+                <option value="concluida">Concluída</option>
+            </select>
+        </label>
+        <label>Data da consulta <input name="data_consulta" type="date"></label>
+        <label>Horário da consulta <input name="horario_consulta" type="time" step="1"></label>
+    </template>
+
+    <div id="toast" class="toast" role="status"></div>
+
+    <script src="./static/js/pages.js" defer></script>
+    <script src="./static/js/api.js" defer></script>
+    <script src="./static/js/clinica.js" defer></script>
+
+</body>
+</html>
