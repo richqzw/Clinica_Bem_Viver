@@ -1,12 +1,9 @@
 from dataclasses import dataclass
-
-
 @dataclass
 class Especialidade:
     nome: str
     descricao: str | None = None
     id_especialidades: int | None = None
-
 class Paciente:
     def __init__(self, nome, cpf, data_nascimento, email, telefone, id_paciente=None):
         self.id_paciente = id_paciente
@@ -15,7 +12,6 @@ class Paciente:
     def to_dict(self):
         return {"id_paciente": self.id_paciente, "nome": self.nome, "cpf": self.cpf,
                 "data_nascimento": str(self.data_nascimento), "email": self.email, "telefone": self.telefone}
-
 class Profissional:
     def __init__(self, nome, crm, email, telefone, minicurriculo, id_especialidades, id_profissional=None):
         self.id_profissional = id_profissional
@@ -26,7 +22,6 @@ class Profissional:
         return {"id_profissional": self.id_profissional, "nome": self.nome, "crm": self.crm,
                 "email": self.email, "telefone": self.telefone, "minicurriculo": self.minicurriculo,
                 "id_especialidades": self.id_especialidades}
-
 class Consulta:
     def __init__(self, id_paciente, id_profissional, data_consulta=None,
                  horario_consulta=None, status="pendente", observacoes=None,
